@@ -1,8 +1,10 @@
 import type { AbstractIntlMessages } from 'next-intl';
 import { createTranslator } from 'next-intl';
+import dynamic from 'next/dynamic';
 
-import IntakeForm from '@/app/intake/IntakeForm';
 import { type Locale } from '@/i18n/config';
+
+const IntakeForm = dynamic(() => import('@/app/intake/IntakeForm'), { ssr: false });
 
 const dictionaries: Record<Locale, () => Promise<AbstractIntlMessages>> = {
   nl: () => import('@/messages/nl.json').then((m) => m.default),
