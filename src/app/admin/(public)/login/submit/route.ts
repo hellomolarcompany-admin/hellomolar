@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { hashPassword, setSessionCookie, verifyCsrfToken, verifyPassword } from '@/lib/auth';
+import { hashPassword, setSessionCookie, verifyCsrfForRequest, verifyPassword } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(req: Request) {
@@ -9,20 +9,29 @@ export async function POST(req: Request) {
   const password = String(form.get('password') || '');
   const csrf = String(form.get('csrf') || '');
   const returnTo = String(form.get('returnTo') || '/admin/intake');
+  const bootstrapToken = String(form.get('bootstrap') || '');
 
-  if (!verifyCsrfToken(csrf)) {
+  if (!(await verifyCsrfForRequest(req, csrf))) {
     return NextResponse.redirect(new URL('/admin/login?err=csrf', req.url));
   }
 
   const totalAdmins = await prisma.adminUser.count();
   if (totalAdmins === 0) {
     // Bootstrap initial admin
+    const inProd = process.env.NODE_ENV === 'production';
+    const expected = process.env.ADMIN_BOOTSTRAP_TOKEN || '';
+    if (inProd) {
+      // In production, require a configured one-time bootstrap token
+      if (!expected || !bootstrapToken || bootstrapToken !== expected) {
+        return NextResponse.redirect(new URL('/admin/login?err=bootstrap-disabled', req.url));
+      }
+    }
     if (!username || password.length < 8) {
       return NextResponse.redirect(new URL('/admin/login?err=bootstrap', req.url));
     }
     const passwordHash = await hashPassword(password);
     const created = await prisma.adminUser.create({ data: { username, passwordHash } });
-    setSessionCookie(created.id);
+    await setSessionCookie(created.id, { req });
     return NextResponse.redirect(new URL(returnTo, req.url));
   }
 
@@ -51,6 +60,6 @@ export async function POST(req: Request) {
     where: { id: user.id },
     data: { failedAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },
   });
-  setSessionCookie(user.id);
+  await setSessionCookie(user.id, { req });
   return NextResponse.redirect(new URL(returnTo, req.url));
 }

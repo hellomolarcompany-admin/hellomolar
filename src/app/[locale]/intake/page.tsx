@@ -1,10 +1,8 @@
 import type { AbstractIntlMessages } from 'next-intl';
 import { createTranslator } from 'next-intl';
-import dynamic from 'next/dynamic';
 
+import IntakeFormClient from '@/app/intake/IntakeFormClient';
 import { type Locale } from '@/i18n/config';
-
-const IntakeForm = dynamic(() => import('@/app/intake/IntakeForm'), { ssr: false });
 
 const dictionaries: Record<Locale, () => Promise<AbstractIntlMessages>> = {
   nl: () => import('@/messages/nl.json').then((m) => m.default),
@@ -24,7 +22,7 @@ export default function Page() {
   return (
     <main className="min-h-screen">
       <div className="mx-auto max-w-4xl py-6">
-        <IntakeForm />
+        <IntakeFormClient />
       </div>
     </main>
   );

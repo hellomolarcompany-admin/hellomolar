@@ -10,7 +10,7 @@ This document outlines how intake submissions are stored, how to operate the dat
   - JSON fields for medications, allergies, conditions
   - `encBlob` stores the full original JSON payload encrypted with AES‑256‑GCM
 - API: `POST /api/intake` validates (Zod), derives columns, encrypts payload, and persists
-- Health endpoints: `GET /api/health/db` (diagnostics) and `GET /api/_health/db` (lightweight probe)
+- Health endpoint: `GET /api/health/db` (diagnostics; requires admin session in production)
 
 ## Environment
 

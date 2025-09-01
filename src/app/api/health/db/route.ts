@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
@@ -44,6 +45,10 @@ function safeParseDbUrl(raw?: string): DbUrlInfo {
  * Returns env info and success/error for each step.
  */
 export async function GET() {
+  // In production, require an authenticated admin session
+  if (process.env.NODE_ENV === 'production' && !(await getSession())) {
+    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  }
   const diagnostics: {
     now: string;
     env: string;

@@ -30,7 +30,7 @@ A multilingual (NL/EN/ES/PAP) intake form for a dental clinic. Built with Next.j
 
 ## Quick Start
 
-1) Install dependencies and start the dev server
+1. Install dependencies and start the dev server
 
 ```bash
 pnpm install
@@ -38,13 +38,15 @@ pnpm dev
 # open http://localhost:3000/nl/intake
 ```
 
-2) Configure environment variables
+2. Configure environment variables
 
 Create a `.env` with at least:
 
 ```env
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DBNAME
 DIRECT_URL=postgresql://USER:PASSWORD@HOST:PORT/DBNAME
+# Strong secret used to sign admin sessions (32+ chars)
+SESSION_SECRET=REPLACE_WITH_LONG_RANDOM
 # 32 random bytes, base64-encoded (used for AES-256-GCM)
 INTAKE_ENC_KEY=REPLACE_WITH_BASE64_32B
 ```
@@ -55,12 +57,14 @@ Generate a suitable key:
 openssl rand -base64 32  # copy the output into INTAKE_ENC_KEY
 ```
 
-3) Set up the database
+3. Set up the database
 
 ```bash
 pnpm prisma generate
 pnpm prisma migrate dev --name init
 ```
+
+You can also copy `.env.example` to `.env` and fill in values. Never commit real secrets.
 
 ## Project Structure (key files)
 
@@ -106,9 +110,10 @@ middleware.ts               # next-intl middleware
 - Persistence: stores selected fields in columns and the full JSON payload encrypted as `encBlob`
 - Encryption: AES‑256‑GCM with `INTAKE_ENC_KEY` (base64‑encoded 32‑byte key)
 
-`GET /api/health/db` and `GET /api/_health/db`
+`GET /api/health/db`
 
-- Connectivity checks and lightweight diagnostics for the database
+- In development: returns connectivity diagnostics.
+- In production: requires an authenticated admin session.
 
 ## Scripts
 
@@ -128,10 +133,22 @@ pnpm start       # Start production server
 - Configure CORS/CSRF only if exposing the API cross‑origin
 - Restrict DB credentials and network access
 
+### Secrets Hygiene
+
+- Do not commit real secrets. `.env*` files are ignored; use `.env.example` as the template.
+- Required secrets: `SESSION_SECRET` (32+ chars), `INTAKE_ENC_KEY` (base64 32 bytes), DB URLs.
+- Rotate any credentials that were ever committed or shared. For Git history cleanup, use `git filter-repo` (or `git filter-branch` as a last resort) to remove `.env*` and force-push, then rotate creds at the provider.
+- In CI/CD, use your platform’s secret manager (e.g., Vercel/Cloud provider) instead of checked-in files.
+
+### Admin Bootstrap (first admin)
+
+- In development: the first admin can be created by submitting the login form with any username and a password (min 8 chars).
+- In production: bootstrap is disabled by default. To allow a one-time bootstrap, set `ADMIN_BOOTSTRAP_TOKEN` and provide it in the "Bootstrap token" field on the login form. After creating the first admin, remove the token from the environment.
+
 ## Deployment
 
 - Vercel or any Node.js 18+ host
-- Ensure env vars are set (`DATABASE_URL`, `DIRECT_URL`, `INTAKE_ENC_KEY`)
+- Ensure env vars are set (`DATABASE_URL`, `DIRECT_URL`, `SESSION_SECRET`, `INTAKE_ENC_KEY`)
 - Run Prisma migrations before serving traffic
 
 ## Contributing

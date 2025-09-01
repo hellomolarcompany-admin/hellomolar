@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { setCsrfToken } from '@/lib/auth';
+import CsrfField from '@/components/CsrfField';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +18,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       </main>
     );
   }
-  const csrf = setCsrfToken();
   return (
     <main className="mx-auto max-w-4xl p-4">
       <div className="mb-4 flex items-center justify-between">
@@ -67,13 +66,13 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
       <div className="mt-6 flex items-center gap-3">
         <form method="POST" action={`/admin/intake/${rec.id}/decrypt`} target="_blank">
-          <input type="hidden" name="csrf" value={csrf} />
+          <CsrfField />
           <button className="rounded border px-3 py-1" type="submit">
             View original payload
           </button>
         </form>
         <form method="POST" action={`/admin/intake/${rec.id}/delete`}>
-          <input type="hidden" name="csrf" value={csrf} />
+          <CsrfField />
           <button className="rounded border border-red-400 px-3 py-1 text-red-700" type="submit">
             Delete
           </button>

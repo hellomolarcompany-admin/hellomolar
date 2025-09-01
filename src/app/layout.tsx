@@ -1,3 +1,5 @@
+import { getLocale } from 'next-intl/server';
+
 import './globals.css';
 
 export const metadata = {
@@ -5,9 +7,10 @@ export const metadata = {
   description: 'HelloMolar application',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale();
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body className="bg-white text-black">{children}</body>
     </html>
   );
