@@ -38,3 +38,17 @@ model IntakeSubmission {
 
   @@index([createdAt])
 }
+
+/// Admin users for protected back office access.
+model AdminUser {
+  id             String   @id @default(uuid())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  username       String   @unique
+  passwordHash   String   // scrypt hash string: scrypt$N$r$p$saltB64$hashB64
+
+  lastLoginAt    DateTime?
+  failedAttempts Int      @default(0)
+  lockedUntil    DateTime?
+}

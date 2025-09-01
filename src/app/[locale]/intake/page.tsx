@@ -1,7 +1,7 @@
 import type { AbstractIntlMessages } from 'next-intl';
 import { createTranslator } from 'next-intl';
 
-import IntakeForm from '@/app/intake/IntakeForm';
+import IntakeFormClient from '@/app/intake/IntakeFormClient';
 import { type Locale } from '@/i18n/config';
 
 const dictionaries: Record<Locale, () => Promise<AbstractIntlMessages>> = {
@@ -22,7 +22,7 @@ export default function Page() {
   return (
     <main className="min-h-screen">
       <div className="mx-auto max-w-4xl py-6">
-        <IntakeForm />
+        <IntakeFormClient />
       </div>
     </main>
   );

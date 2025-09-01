@@ -204,7 +204,7 @@ export default function IntakeForm() {
       setShowServerModal(true);
       // Reset the form without relying on DOM events
       reset();
-    } catch (_err: unknown) {
+    } catch {
       setServerMsg(t('server.error'));
       setServerMsgType('error');
       setShowServerModal(true);
