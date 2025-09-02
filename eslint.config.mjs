@@ -40,6 +40,14 @@ const config = [
     rules: {
       'simple-import-sort/imports': 'warn',
       'simple-import-sort/exports': 'warn',
+      // Prefer tokens/Tailwind colors over raw hex codes in TS/TSX
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: "Literal[value=/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/]",
+          message: 'Use design tokens or Tailwind color classes instead of raw hex colors.',
+        },
+      ],
       '@typescript-eslint/no-unused-vars': [
         'warn',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },

@@ -17,7 +17,7 @@ export default function LanguageSwitcher() {
 
   return (
     <select
-      className="rounded-md border px-2 py-1"
+      className="w-auto rounded-md border px-2 py-1"
       value={locale}
       onChange={handleChange}
       aria-label="Change language"
