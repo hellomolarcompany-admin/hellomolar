@@ -1,31 +1,177 @@
 @import 'tailwindcss';
 
+/* Design tokens (CSS variables) */
 :root {
+  /* Brand palette sampled from design (teal) */
+  --brand-50: #e6f7f5;
+  --brand-100: #c9efea;
+  --brand-200: #99e1d8;
+  --brand-300: #66d2c4;
+  --brand-400: #3fc4b3;
+  --brand-500: #24b6a6; /* Primary */
+  --brand-600: #1ea394;
+  --brand-700: #1a8a7d;
+  --brand-800: #176e64;
+  --brand-900: #12564e;
+
+  /* Semantic colors */
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0f172a; /* slate-900 */
+  --muted-foreground: #475569; /* slate-600 */
+  --surface: #ffffff;
+  --border: #e2e8f0; /* slate-200 */
+  --ring: var(--brand-500);
 }
 
 @theme inline {
+  /* Expose tokens to Tailwind */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+
+  --font-sans: var(--font-sans);
+  --font-script: var(--font-script);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Force light theme (house style prefers white surfaces) */
+/* Dark-scheme overrides intentionally omitted to keep white background */
+
+/* Base element styles */
+@layer base {
+  html {
+    color-scheme: light dark;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(
+      --font-sans,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      Segoe UI,
+      Roboto,
+      Noto Sans,
+      Ubuntu,
+      Cantarell,
+      Helvetica Neue,
+      Arial,
+      'Apple Color Emoji',
+      'Segoe UI Emoji'
+    );
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--foreground);
+  }
+  a {
+    color: var(--brand-700);
+    text-underline-offset: 3px;
+  }
+  a:hover {
+    color: var(--brand-500);
+  }
+
+  /* Form controls default look matching house style */
+  input[type='text'],
+  input[type='email'],
+  input[type='date'],
+  input[type='number'],
+  select,
+  textarea {
+    @apply w-full rounded-md border bg-surface text-foreground placeholder:text-slate-400;
+    border-color: var(--border);
+    padding: 0.5rem 0.625rem; /* 8px 10px */
+  }
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
+    border-color: var(--ring);
+  }
+
+  /* Native checkbox/radio accents across the app */
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: var(--brand-600);
+  }
+
+  button {
+    font-weight: 600;
+  }
+
+  /* Prevent browser scroll anchoring from moving the viewport on dynamic form changes */
+  .prevent-scroll-anchor {
+    overflow-anchor: none;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Reusable component classes */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2
+    transition-colors disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-brand {
+    @apply bg-brand-600 text-white hover:bg-brand-700;
+  }
+  .btn-ghost {
+    @apply text-foreground hover:bg-brand-50;
+  }
+  .btn-outline {
+    @apply border border-brand-600 text-brand-700 hover:bg-brand-50;
+  }
+
+  .card {
+    @apply rounded-lg bg-surface p-4 shadow-sm border;
+    border-color: var(--border);
+  }
+  .section {
+    @apply my-8;
+  }
+  .divider {
+    @apply h-px w-full bg-[var(--border)];
+  }
+
+  .label {
+    @apply block text-sm font-medium text-foreground;
+  }
+  .hint {
+    @apply text-xs text-muted-foreground;
+  }
+  .checkbox {
+    accent-color: var(--brand-600);
+  }
 }
 
-/* Prevent browser scroll anchoring from moving the viewport on dynamic form changes */
-.prevent-scroll-anchor {
-  overflow-anchor: none;
+/* Utility shortcuts */
+@layer utilities {
+  .heading-title {
+    @apply font-semibold uppercase tracking-wider;
+  }
+  .heading-script {
+    font-family: var(--font-script, cursive);
+    letter-spacing: 0.02em;
+  }
 }

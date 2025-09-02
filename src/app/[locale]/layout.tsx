@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { type Locale, isLocale } from '@/i18n/config';
+import HeaderImage from '@/ui/HeaderImage';
 
 export const metadata = {
   title: 'HelloMolar',
@@ -30,10 +31,12 @@ export default async function LocaleLayout(props: {
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <div className="mx-auto max-w-5xl px-4 py-4">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">HelloMolar</h1>
-          <LanguageSwitcher />
-        </div>
+        <header className="mb-6">
+          <HeaderImage />
+          <div className="mt-3 flex items-center justify-end">
+            <LanguageSwitcher />
+          </div>
+        </header>
         {props.children}
       </div>
     </NextIntlClientProvider>

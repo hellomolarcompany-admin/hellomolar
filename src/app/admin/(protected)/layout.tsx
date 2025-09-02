@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 
 import { verifySession } from '@/lib/auth';
+import HeaderImage from '@/ui/HeaderImage';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const store = await cookies();
@@ -24,6 +25,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const csrfCookie = store.get('ADMIN_CSRF')?.value || '';
   return (
     <>
+      {/* Site header banner */}
+      <header className="border-b bg-white">
+        <div className="mx-auto max-w-6xl p-3">
+          <HeaderImage />
+        </div>
+      </header>
+
+      {/* Admin navigation bar */}
       <header className="border-b bg-gray-50">
         <div className="mx-auto flex max-w-6xl items-center justify-between p-3 text-sm">
           <div className="font-medium">Admin</div>

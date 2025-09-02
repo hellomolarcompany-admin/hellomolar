@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { FieldErrors } from 'react-hook-form';
@@ -15,6 +16,8 @@ import {
   IntakeSchema,
   RelationEnum,
 } from '@/lib/validation/intake';
+import Button from '@/ui/Button';
+import Checkbox from '@/ui/Checkbox';
 
 export default function IntakeForm() {
   /**
@@ -22,6 +25,7 @@ export default function IntakeForm() {
    * Uses react-hook-form with Zod for validation and next-intl for i18n.
    */
   const t = useTranslations('intake');
+  const router = useRouter();
 
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [serverMsgType, setServerMsgType] = useState<'success' | 'error' | null>(null);
@@ -202,8 +206,7 @@ export default function IntakeForm() {
       setServerMsg(t('server.success'));
       setServerMsgType('success');
       setShowServerModal(true);
-      // Reset the form without relying on DOM events
-      reset();
+      // Do not reset immediately; navigate after modal closes
     } catch {
       setServerMsg(t('server.error'));
       setServerMsgType('error');
@@ -306,17 +309,19 @@ export default function IntakeForm() {
     const id = setTimeout(() => {
       setShowServerModal(false);
       setServerMsg(null);
+      const wasSuccess = serverMsgType === 'success';
       setServerMsgType(null);
+      if (wasSuccess) router.push('/');
     }, 8000);
     return () => clearTimeout(id);
-  }, [showServerModal]);
+  }, [showServerModal, serverMsgType, router]);
 
   const ErrorText = ({ msg }: { msg?: string }) =>
     msg ? <p className="mt-1 text-sm text-red-600">{msg}</p> : null;
 
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <section className="space-y-4">
-      <h2 className="text-lg font-medium">{title}</h2>
+    <section className="section space-y-4">
+      <h2 className="text-lg font-semibold heading-title normal-case">{title}</h2>
       {children}
     </section>
   );
@@ -342,14 +347,20 @@ export default function IntakeForm() {
       noValidate
       className="prevent-scroll-anchor mx-auto max-w-3xl space-y-6 p-4"
     >
-      <h1 className="text-2xl font-semibold">{t('title')}</h1>
+      <h1 className="text-2xl heading-title">{t('title')}</h1>
 
       {showServerModal && serverMsg && (
         <div
           role="dialog"
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={() => setShowServerModal(false)}
+          onClick={() => {
+            const wasSuccess = serverMsgType === 'success';
+            setShowServerModal(false);
+            setServerMsg(null);
+            setServerMsgType(null);
+            if (wasSuccess) router.push('/');
+          }}
         >
           <div
             className={
@@ -366,7 +377,13 @@ export default function IntakeForm() {
                 type="button"
                 className="inline-flex h-8 w-8 items-center justify-center rounded hover:bg-black/10"
                 aria-label={t('buttons.close')}
-                onClick={() => setShowServerModal(false)}
+                onClick={() => {
+                  const wasSuccess = serverMsgType === 'success';
+                  setShowServerModal(false);
+                  setServerMsg(null);
+                  setServerMsgType(null);
+                  if (wasSuccess) router.push('/');
+                }}
               >
                 <span aria-hidden>×</span>
               </button>
@@ -565,7 +582,7 @@ export default function IntakeForm() {
             />
             <ErrorText msg={errors.phone1?.number?.message} />
             <label className="mt-2 flex items-center gap-2 text-sm">
-              <input type="checkbox" {...register('phone1.hasWhatsApp')} />
+              <Checkbox {...register('phone1.hasWhatsApp')} />
               <span>{t('labels.hasWhatsApp')}</span>
             </label>
           </div>
@@ -728,25 +745,13 @@ export default function IntakeForm() {
               ).map((opt) => {
                 const isOn = medsSelected.includes(opt);
                 return (
-                  <div key={opt} className="flex items-center gap-2 text-sm">
-                    <button
-                      type="button"
-                      role="checkbox"
-                      aria-checked={isOn}
-                      onClick={() => toggleArray('medical.medicationsSelected', opt)}
-                      className={
-                        'flex h-4 w-4 items-center justify-center rounded border ' +
-                        (isOn ? 'border-black bg-black text-white' : 'border-gray-400 bg-white')
-                      }
-                    >
-                      {isOn ? (
-                        <span className="leading-none" aria-hidden>
-                          ✓
-                        </span>
-                      ) : null}
-                    </button>
+                  <label key={opt} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={isOn}
+                      onChange={() => toggleArray('medical.medicationsSelected', opt)}
+                    />
                     <span className="select-none">{t(`options.medications.${opt}`)}</span>
-                  </div>
+                  </label>
                 );
               })}
             </div>
@@ -800,25 +805,13 @@ export default function IntakeForm() {
               ).map((opt) => {
                 const isOn = allergiesSelected.includes(opt);
                 return (
-                  <div key={opt} className="flex items-center gap-2 text-sm">
-                    <button
-                      type="button"
-                      role="checkbox"
-                      aria-checked={isOn}
-                      onClick={() => toggleArray('medical.allergiesSelected', opt)}
-                      className={
-                        'flex h-4 w-4 items-center justify-center rounded border ' +
-                        (isOn ? 'border-black bg-black text-white' : 'border-gray-400 bg-white')
-                      }
-                    >
-                      {isOn ? (
-                        <span className="leading-none" aria-hidden>
-                          ✓
-                        </span>
-                      ) : null}
-                    </button>
+                  <label key={opt} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={isOn}
+                      onChange={() => toggleArray('medical.allergiesSelected', opt)}
+                    />
                     <span className="select-none">{t(`options.allergies.${opt}`)}</span>
-                  </div>
+                  </label>
                 );
               })}
             </div>
@@ -843,7 +836,7 @@ export default function IntakeForm() {
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {conditionEntries.map(([key, label]) => (
                 <label key={key} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" {...register(`medical.conditions.${key}` as const)} />
+                  <Checkbox {...register(`medical.conditions.${key}` as const)} />
                   <span>{label}</span>
                 </label>
               ))}
@@ -881,12 +874,12 @@ export default function IntakeForm() {
       {/* Consents */}
       <Section title={t('sections.consents')}>
         <label className="flex items-start gap-3">
-          <input type="checkbox" {...register('marketingConsent')} className="mt-1" />
+          <Checkbox {...register('marketingConsent')} className="mt-1" />
           <span className="text-sm">{t('labels.marketingConsent')}</span>
         </label>
 
         <label className="flex items-start gap-3">
-          <input type="checkbox" {...register('privacyConsent')} className="mt-1" />
+          <Checkbox {...register('privacyConsent')} className="mt-1" />
           <span className="text-sm">
             {t('labels.privacyConsent')}{' '}
             <button
@@ -906,13 +899,9 @@ export default function IntakeForm() {
         <ErrorText msg={errors.privacyConsent?.message} />
       </Section>
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
-      >
+      <Button type="submit" disabled={submitting} className="mt-2">
         {submitting ? t('buttons.submitting') : t('buttons.submit')}
-      </button>
+      </Button>
     </form>
   );
 }
