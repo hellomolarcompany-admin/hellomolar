@@ -3,6 +3,8 @@ import Link from 'next/link';
 import CsrfField from '@/components/CsrfField';
 import { prisma } from '@/lib/prisma';
 
+import DeleteConfirm from './DeleteConfirm';
+
 export const dynamic = 'force-dynamic';
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
@@ -71,12 +73,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
             View original payload
           </button>
         </form>
-        <form method="POST" action={`/admin/intake/${rec.id}/delete`}>
-          <CsrfField />
-          <button className="rounded border border-red-400 px-3 py-1 text-red-700" type="submit">
-            Delete
-          </button>
-        </form>
+        <DeleteConfirm id={rec.id} />
       </div>
     </main>
   );

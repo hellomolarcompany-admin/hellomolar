@@ -32,11 +32,13 @@ model IntakeSubmission {
   privacyAccepted Boolean
   userAgent       String?
   ipInet          String?
-  fingerprint     String?
 
   encBlob Bytes?
 
   @@index([createdAt])
+  @@index([fullName])
+  @@index([email])
+  @@index([phone])
 }
 
 /// Admin users for protected back office access.
@@ -51,4 +53,19 @@ model AdminUser {
   lastLoginAt    DateTime?
   failedAttempts Int      @default(0)
   lockedUntil    DateTime?
+}
+
+/// Minimal audit trail for admin actions involving sensitive data.
+model AdminAuditLog {
+  id         String   @id @default(uuid())
+  createdAt  DateTime @default(now())
+
+  adminId    String
+  action     String   // e.g., 'intake.decrypt', 'intake.delete'
+  subjectId  String   // e.g., IntakeSubmission.id
+  ipInet     String?
+  userAgent  String?
+
+  @@index([createdAt])
+  @@index([adminId, createdAt])
 }

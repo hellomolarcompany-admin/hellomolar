@@ -45,8 +45,8 @@ function safeParseDbUrl(raw?: string): DbUrlInfo {
  * Returns env info and success/error for each step.
  */
 export async function GET() {
-  // In production, require an authenticated admin session
-  if (process.env.NODE_ENV === 'production' && !(await getSession())) {
+  // Always require an authenticated admin session
+  if (!(await getSession())) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
   const diagnostics: {

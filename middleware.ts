@@ -51,9 +51,10 @@ async function isValidSessionToken(token: string): Promise<boolean> {
     let ok = 0;
     for (let i = 0; i < expected.byteLength; i++) ok |= expected[i] ^ sig[i];
     if (ok !== 0) return false;
-    const parsed = JSON.parse(new TextDecoder().decode(body)) as { exp?: number };
+    const parsed = JSON.parse(new TextDecoder().decode(body)) as { exp?: number; ver?: number };
     const now = Math.floor(Date.now() / 1000);
     if (!parsed.exp || parsed.exp <= now) return false;
+    if (parsed.ver !== 1) return false;
     return true;
   } catch {
     return false;
@@ -62,6 +63,14 @@ async function isValidSessionToken(token: string): Promise<boolean> {
 
 export default async function middleware(req: Request) {
   const url = new URL(req.url);
+  const inProd = process.env.NODE_ENV === 'production';
+  // Enforce HTTPS for admin routes in production when behind a proxy
+  const proto = req.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
+  if (inProd && proto !== 'https' && url.pathname.startsWith('/admin')) {
+    const httpsUrl = new URL(url.toString());
+    httpsUrl.protocol = 'https:';
+    return NextResponse.redirect(httpsUrl);
+  }
   // Normalize pathname by stripping a leading locale segment if present
   const segments = url.pathname.split('/').filter(Boolean);
   const first = segments[0];
