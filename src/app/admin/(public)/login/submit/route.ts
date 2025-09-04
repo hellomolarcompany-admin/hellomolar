@@ -2,8 +2,14 @@ import { NextResponse } from 'next/server';
 
 import { hashPassword, setSessionCookie, verifyCsrfForRequest, verifyPassword } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { rateLimit, rlKeyFromRequest } from '@/lib/rateLimit';
 
 export async function POST(req: Request) {
+  // Throttle login attempts: 10/min/IP
+  const rl = rateLimit(rlKeyFromRequest(req, 'login'), 10, 60_000);
+  if (!rl.allowed) {
+    return NextResponse.redirect(new URL('/admin/login?err=rate', req.url));
+  }
   const form = await req.formData();
   const username = String(form.get('username') || '').trim();
   const password = String(form.get('password') || '');

@@ -75,10 +75,10 @@ src/
       layout.tsx            # Intl provider + layout
       intake/page.tsx       # Intake page (server)
     intake/IntakeForm.tsx   # Intake form (client)
-    api/
+  api/
       intake/route.ts       # Save intake (POST)
-      health/db/route.ts    # DB diagnostics (GET)
-      _health/db/route.ts   # Lightweight DB probe (GET)
+      health/db/route.ts    # DB diagnostics (GET) (auth required)
+      _health/db/route.ts   # Alias to health/db (auth required)
     globals.css
   components/
     LanguageSwitcher.tsx
@@ -110,10 +110,9 @@ middleware.ts               # next-intl middleware
 - Persistence: stores selected fields in columns and the full JSON payload encrypted as `encBlob`
 - Encryption: AES‑256‑GCM with `INTAKE_ENC_KEY` (base64‑encoded 32‑byte key)
 
-`GET /api/health/db`
+`GET /api/health/db` (or `/api/_health/db`)
 
-- In development: returns connectivity diagnostics.
-- In production: requires an authenticated admin session.
+- Returns connectivity diagnostics (auth required in all environments).
 
 ## Scripts
 
@@ -129,9 +128,18 @@ pnpm start       # Start production server
 ## Security & Privacy
 
 - Never log sensitive data in production
-- Keep `INTAKE_ENC_KEY` secret and rotate if necessary
+- Keep `INTAKE_ENC_KEY` secret and rotate if necessary (use `INTAKE_FALLBACK_KEYS` for decrypting older records)
 - Configure CORS/CSRF only if exposing the API cross‑origin
 - Restrict DB credentials and network access
+- Rate limiting protects `/api/intake` and `/admin/login/submit`
+
+### Security Headers
+
+- Global security headers are set via `next.config.ts` (CSP in Report-Only to start, HSTS in production, anti-clickjacking, nosniff, COOP, referrer policy, and a minimal permissions policy).
+
+### HTTPS
+
+- Admin routes redirect to HTTPS in production if the `x-forwarded-proto` indicates HTTP.
 
 ### Secrets Hygiene
 
@@ -156,3 +164,4 @@ pnpm start       # Start production server
 - Prefer feature branches and PRs
 - Keep ESLint/Prettier/TypeScript clean
 - Keep all UI strings in `src/messages/*.json`
+- Pre-push checks run `pnpm typecheck && pnpm lint && pnpm build`

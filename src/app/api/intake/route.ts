@@ -5,6 +5,7 @@ import type { Prisma } from '@prisma/client';
 import { isLocale } from '@/i18n/config';
 import { encryptJsonToBuffer } from '@/lib/crypto';
 import { prisma } from '@/lib/prisma';
+import { rateLimit, rlKeyFromRequest } from '@/lib/rateLimit';
 import { IntakeSchema } from '@/lib/validation/intake';
 
 export const runtime = 'nodejs';
@@ -33,6 +34,11 @@ function guessLocale(req: Request): string {
  */
 export async function POST(req: Request) {
   try {
+    // Basic rate limit: 5 requests/minute per IP
+    const rl = rateLimit(rlKeyFromRequest(req, 'intake'), 5, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json({ ok: false, message: 'Too many requests' }, { status: 429 });
+    }
     const json = await req.json();
 
     if (json?.botField) {
@@ -67,8 +73,8 @@ export async function POST(req: Request) {
     const conditionsJson: Prisma.InputJsonValue = data.medical?.conditions ?? {};
 
     const fullName = [data.firstName, data.lastName].filter(Boolean).join(' ').trim();
-    const primaryPhone: string | null = data?.phone1?.number?.trim() || null;
-    const email: string | null = data?.email?.trim() || null;
+    const primaryPhone: string | null = data?.phone1?.number?.replace(/\s+/g, ' ').trim() || null;
+    const email: string | null = (data?.email || '').toLowerCase().trim() || null;
     const address: string | null =
       [data?.address?.street, data?.address?.number, data?.address?.city]
         .filter((v) => !!v && String(v).trim())
