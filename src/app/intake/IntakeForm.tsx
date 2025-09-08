@@ -187,6 +187,31 @@ export default function IntakeForm() {
     }
   };
 
+  const [captchaToken, setCaptchaToken] = useState<string>('');
+  const [formTs] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    const sitekey = process.env.NEXT_PUBLIC_HCAPTCHA_SITEKEY;
+    if (!sitekey) return;
+    const id = 'hcaptcha-script';
+    if (document.getElementById(id)) return;
+    const s = document.createElement('script');
+    s.id = id;
+    s.src = 'https://js.hcaptcha.com/1/api.js';
+    s.async = true;
+    s.defer = true;
+    document.head.appendChild(s);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const token = (e as CustomEvent<string>).detail;
+      setCaptchaToken(String(token || ''));
+    };
+    window.addEventListener('hcaptcha-verified', handler as EventListener);
+    return () => window.removeEventListener('hcaptcha-verified', handler as EventListener);
+  }, []);
+
   const onSubmit = async (values: IntakeFormData) => {
     setSubmitting(true);
     setServerMsg(null);
@@ -195,7 +220,7 @@ export default function IntakeForm() {
       const res = await fetch('/api/intake', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, captchaToken, formTs }),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -347,6 +372,16 @@ export default function IntakeForm() {
       noValidate
       className="prevent-scroll-anchor mx-auto max-w-3xl space-y-6 p-4"
     >
+      {/* hCaptcha widget (optional, shown if configured) */}
+      {process.env.NEXT_PUBLIC_HCAPTCHA_SITEKEY ? (
+        <div className="mb-2">
+          <div
+            className="h-captcha"
+            data-sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITEKEY}
+            data-callback="onHCaptchaVerify"
+          />
+        </div>
+      ) : null}
       <h1 className="text-2xl heading-title">{t('title')}</h1>
 
       {showServerModal && serverMsg && (
@@ -450,6 +485,8 @@ export default function IntakeForm() {
           className="mt-1 w-full rounded-md border p-2"
         />
       </div>
+      {/* Form timestamp for min fill-time checks */}
+      <input type="hidden" name="formTs" value={String(formTs)} readOnly />
 
       {/* Residence */}
       <Section title={t('sections.residence')}>
@@ -904,4 +941,20 @@ export default function IntakeForm() {
       </Button>
     </form>
   );
+}
+
+// Expose hCaptcha callback to window
+declare global {
+  interface Window {
+    onHCaptchaVerify?: (token: string) => void;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.onHCaptchaVerify = (token: string) => {
+    try {
+      const event = new CustomEvent('hcaptcha-verified', { detail: token });
+      window.dispatchEvent(event);
+    } catch {}
+  };
 }

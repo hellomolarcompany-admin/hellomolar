@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 import CsrfField from '@/components/CsrfField';
-import { prisma } from '@/lib/prisma';
+import { getTenantClient } from '@/lib/tenant';
 
 import DeleteConfirm from './DeleteConfirm';
 
@@ -9,7 +9,15 @@ export const dynamic = 'force-dynamic';
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
-  const rec = await prisma.intakeSubmission.findUnique({ where: { id } });
+  const tenant = await getTenantClient();
+  if (!tenant) {
+    return (
+      <main className="mx-auto max-w-4xl p-4">
+        <p className="text-sm">Tenant not found.</p>
+      </main>
+    );
+  }
+  const rec = await tenant.prisma.intakeSubmission.findUnique({ where: { id } });
   if (!rec) {
     return (
       <main className="mx-auto max-w-4xl p-4">

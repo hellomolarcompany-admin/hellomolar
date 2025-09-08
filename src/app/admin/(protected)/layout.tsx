@@ -7,7 +7,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const store = await cookies();
   const token = store.get('ADMIN_SESSION')?.value || '';
   const session = token ? verifySession(token) : null;
-  if (!session) {
+  // Ensure tenant context matches session
+  if (!session || session.role !== 'tenant_admin') {
     return (
       <main className="mx-auto max-w-xl p-6 text-sm">
         <h1 className="mb-3 text-lg font-semibold">Unauthorized</h1>

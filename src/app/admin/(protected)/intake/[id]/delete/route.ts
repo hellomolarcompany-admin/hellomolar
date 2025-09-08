@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { getSession, verifyCsrfForRequest } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { getTenantClient } from '@/lib/tenant';
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   // Require a valid admin session
@@ -17,11 +17,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.redirect(new URL('/admin/intake?err=csrf', req.url));
   }
   try {
-    await prisma.intakeSubmission.delete({ where: { id } });
+    const tenant = await getTenantClient();
+    if (!tenant) return NextResponse.redirect(new URL('/admin/intake?err=tenant', req.url));
+    await tenant.prisma.intakeSubmission.delete({ where: { id } });
     try {
       const ipInet = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || null;
       const userAgent = req.headers.get('user-agent') || null;
-      await prisma.adminAuditLog.create({
+      await tenant.prisma.adminAuditLog.create({
         data: {
           adminId: session.uid,
           action: 'intake.delete',

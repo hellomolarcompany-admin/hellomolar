@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { getSession, verifyCsrfForRequest } from '@/lib/auth';
 import { decryptBufferToJson } from '@/lib/crypto';
-import { prisma } from '@/lib/prisma';
+import { getTenantClient } from '@/lib/tenant';
 
 export const runtime = 'nodejs';
 
@@ -19,9 +19,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!(await verifyCsrfForRequest(req, csrf))) {
     return NextResponse.json({ error: 'CSRF' }, { status: 403 });
   }
-  const rec = await prisma.intakeSubmission.findUnique({ where: { id } });
+  const tenant = await getTenantClient();
+  if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 400 });
+  const rec = await tenant.prisma.intakeSubmission.findUnique({ where: { id } });
   if (!rec || !rec.encBlob) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  const key = process.env.INTAKE_ENC_KEY;
+  const key = tenant.info.encKey || process.env.INTAKE_ENC_KEY;
   if (!key) return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
   try {
     // Try primary key; if it fails, try fallbacks for key rotation
@@ -36,7 +38,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         try {
           const ipInet = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || null;
           const userAgent = req.headers.get('user-agent') || null;
-          await prisma.adminAuditLog.create({
+          await tenant.prisma.adminAuditLog.create({
             data: {
               adminId: session.uid,
               action: 'intake.decrypt',

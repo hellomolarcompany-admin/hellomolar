@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { prisma } from '@/lib/prisma';
+import { getTenantClient } from '@/lib/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +51,16 @@ export default async function Page(props: {
       }
     : {};
 
+  const tenant = await getTenantClient();
+  if (!tenant) {
+    return (
+      <main className="mx-auto max-w-6xl p-4">
+        <p className="text-sm">Tenant not found.</p>
+      </main>
+    );
+  }
+  const prisma = tenant.prisma;
+
   const [rows, total] = await Promise.all([
     prisma.intakeSubmission.findMany({
       where,
@@ -68,6 +78,7 @@ export default async function Page(props: {
         phone: true,
         hadComplications: true,
         privacyAccepted: true,
+        isSpam: true,
       },
     }),
     prisma.intakeSubmission.count({ where }),
@@ -114,34 +125,36 @@ export default async function Page(props: {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="odd:bg-white even:bg-gray-50">
-                <td className="border px-3 py-2">{new Date(r.createdAt).toLocaleString()}</td>
-                <td className="border px-3 py-2">{r.fullName}</td>
-                <td className="border px-3 py-2">{ageFromDob(r.dob) ?? '—'}</td>
-                <td className="border px-3 py-2">{r.residentType}</td>
-                <td className="border px-3 py-2">{r.country ?? '—'}</td>
-                <td className="border px-3 py-2">{maskEmail(r.email) ?? '—'}</td>
-                <td className="border px-3 py-2">{maskPhone(r.phone) ?? '—'}</td>
-                <td className="border px-3 py-2">{r.hadComplications ? 'Yes' : 'No'}</td>
-                <td className="border px-3 py-2">{r.privacyAccepted ? 'Yes' : 'No'}</td>
-                <td className="border px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <Link className="text-blue-600 underline" href={`/admin/intake/${r.id}`}>
-                      View
-                    </Link>
-                    <button
-                      type="button"
-                      className="cursor-not-allowed text-gray-400"
-                      title="Delete (coming soon)"
-                      disabled
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {rows
+              .filter((r) => !r.isSpam)
+              .map((r) => (
+                <tr key={r.id} className="odd:bg-white even:bg-gray-50">
+                  <td className="border px-3 py-2">{new Date(r.createdAt).toLocaleString()}</td>
+                  <td className="border px-3 py-2">{r.fullName}</td>
+                  <td className="border px-3 py-2">{ageFromDob(r.dob) ?? '—'}</td>
+                  <td className="border px-3 py-2">{r.residentType}</td>
+                  <td className="border px-3 py-2">{r.country ?? '—'}</td>
+                  <td className="border px-3 py-2">{maskEmail(r.email) ?? '—'}</td>
+                  <td className="border px-3 py-2">{maskPhone(r.phone) ?? '—'}</td>
+                  <td className="border px-3 py-2">{r.hadComplications ? 'Yes' : 'No'}</td>
+                  <td className="border px-3 py-2">{r.privacyAccepted ? 'Yes' : 'No'}</td>
+                  <td className="border px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <Link className="text-blue-600 underline" href={`/admin/intake/${r.id}`}>
+                        View
+                      </Link>
+                      <button
+                        type="button"
+                        className="cursor-not-allowed text-gray-400"
+                        title="Delete (coming soon)"
+                        disabled
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>

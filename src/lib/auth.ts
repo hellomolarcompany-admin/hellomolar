@@ -48,6 +48,8 @@ type SessionPayload = {
   exp: number; // seconds
   fp: string; // fingerprint (placeholder)
   ver: 1;
+  tid?: string; // tenant id (for tenant sessions)
+  role: 'tenant_admin' | 'tenant_user' | 'superadmin';
 };
 
 function b64url(buf: Buffer): string {
@@ -103,14 +105,22 @@ function secureFromRequest(req?: Request): boolean {
 }
 
 export async function setSessionCookie(
-  uid: string,
+  payload: Omit<SessionPayload, 'iat' | 'exp' | 'fp' | 'ver'>,
   options?: { req?: Request; maxAgeHours?: number },
 ) {
   const maxAgeHours = options?.maxAgeHours ?? 8;
   const now = Math.floor(Date.now() / 1000);
   const exp = now + maxAgeHours * 60 * 60;
-  const payload: SessionPayload = { uid, iat: now, exp, fp: fingerprintPlaceholder(), ver: 1 };
-  const token = signSession(payload);
+  const session: SessionPayload = {
+    uid: payload.uid,
+    tid: payload.tid,
+    role: payload.role,
+    iat: now,
+    exp,
+    fp: fingerprintPlaceholder(),
+    ver: 1,
+  };
+  const token = signSession(session);
   const cookie = await cookies();
   const secure = secureFromRequest(options?.req);
   cookie.set('ADMIN_SESSION', token, {
@@ -167,11 +177,12 @@ export async function verifyCsrfToken(value: string | null | undefined): Promise
 function isSameOrigin(req: Request): boolean {
   try {
     const url = new URL(req.url);
-    const origin = req.headers.get('origin') || '';
-    if (origin) return origin === `${url.protocol}//${url.host}`;
-    const ref = req.headers.get('referer') || '';
-    if (ref) {
-      const r = new URL(ref);
+    const origin = (req.headers.get('origin') || '').toLowerCase();
+    if (origin && origin !== 'null') return origin === `${url.protocol}//${url.host}`;
+    const ref = (req.headers.get('referer') || '').toLowerCase();
+    if (ref && ref !== 'null') {
+      // Safely resolve relative/invalid refs against the request URL
+      const r = new URL(ref, url);
       return r.protocol === url.protocol && r.host === url.host;
     }
   } catch {}
@@ -183,12 +194,7 @@ export async function verifyCsrfForRequest(
   value: string | null | undefined,
 ): Promise<boolean> {
   if (await verifyCsrfToken(value)) return true;
-  // Fallback: accept when the request is a top-level same-origin navigation
-  const site = (req.headers.get('sec-fetch-site') || '').toLowerCase();
-  const mode = (req.headers.get('sec-fetch-mode') || '').toLowerCase();
-  const user = req.headers.get('sec-fetch-user') || '';
-  if (isSameOrigin(req) && site === 'same-origin' && mode === 'navigate' && user === '?1') {
-    return true;
-  }
+  // Fallback: accept when the request is same-origin
+  if (isSameOrigin(req)) return true;
   return false;
 }

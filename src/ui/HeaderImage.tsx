@@ -1,9 +1,26 @@
+import { headers } from 'next/headers';
 import Image from 'next/image';
 
-export default function HeaderImage() {
+import { controlPrisma } from '@/lib/controlPlane';
+import { parseTenantFromHost } from '@/lib/tenant';
+
+export default async function HeaderImage() {
+  const host = (await headers()).get('host');
+  const slug = parseTenantFromHost(host);
+  let logoUrl: string | null = null;
+  if (slug) {
+    try {
+      const t = await controlPrisma.tenant.findUnique({
+        where: { slug },
+        include: { branding: true },
+      });
+      logoUrl = t?.branding?.logoUrl || null;
+    } catch {}
+  }
+  const src = logoUrl || '/brand/header.svg';
   return (
     <Image
-      src="/brand/header.svg"
+      src={src}
       alt="Klinika Dental header"
       width={1000}
       height={200}

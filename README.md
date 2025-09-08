@@ -27,6 +27,7 @@ A multilingual (NL/EN/ES/PAP) intake form for a dental clinic. Built with Next.j
 - Node.js 18+
 - pnpm (recommended): `npm i -g pnpm`
 - PostgreSQL database URL
+- (Multi-tenant) Redis for rate limits, AWS KMS for secrets, hCaptcha keys
 
 ## Quick Start
 
@@ -65,6 +66,49 @@ pnpm prisma migrate dev --name init
 ```
 
 You can also copy `.env.example` to `.env` and fill in values. Never commit real secrets.
+
+### Multi-Tenant Setup (Subdomains)
+
+1. Configure environment
+
+```
+CONTROL_DATABASE_URL=postgres://...            # same as DATABASE_URL by default
+REDIS_URL=redis://USER:PASS@HOST:6379/0
+HCAPTCHA_SECRET=your_hcaptcha_secret
+NEXT_PUBLIC_HCAPTCHA_SITEKEY=your_hcaptcha_sitekey
+AWS_REGION=your_aws_region
+# App still supports single-tenant fallback via INTAKE_ENC_KEY for local dev
+```
+
+2. Migrate database (adds control-plane tables and `isSpam`)
+
+```bash
+pnpm prisma generate
+pnpm prisma migrate dev --name multi_tenant_init
+```
+
+3. Provision a tenant
+
+- Create a KMS key in AWS and encrypt:
+  - the tenant Postgres DB URL → base64 ciphertext
+  - a 32-byte base64 intake encryption key → base64 ciphertext
+- Insert rows:
+  - `Tenant { slug, name }`
+  - `TenantHost { host, tenantId }` with `host = slug.example.com`
+  - `TenantSecret { tenantId, dbUrlCiphertext, encKeyCiphertext, kmsKeyId }`
+  - (optional) `Branding { tenantId, logoUrl }`
+
+4. Access app on `https://<slug>.your-domain.tld/`
+
+- Visit `/admin/login` on the tenant subdomain to bootstrap first admin (in production requires `ADMIN_BOOTSTRAP_TOKEN`).
+- Home `/` requires login; patient intake remains public at `/<locale>/intake`.
+
+5. Production hardening
+
+- Set strict secrets in the platform secret manager.
+- Ensure HTTPS termination and HSTS.
+- Configure DNS and TLS for tenant subdomains.
+- Monitor Redis and DB; set up backups per tenant.
 
 ## Project Structure (key files)
 

@@ -35,6 +35,9 @@ model IntakeSubmission {
 
   encBlob Bytes?
 
+  // Spam classification flag
+  isSpam Boolean @default(false)
+
   @@index([createdAt])
   @@index([fullName])
   @@index([email])
@@ -68,4 +71,63 @@ model AdminAuditLog {
 
   @@index([createdAt])
   @@index([adminId, createdAt])
+}
+
+/// Control plane models for multi-tenancy
+model Tenant {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  slug      String   @unique
+  name      String
+
+  hosts     TenantHost[]
+  branding  Branding?
+  secrets   TenantSecret?
+}
+
+model TenantHost {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  host      String   @unique
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId  String
+}
+
+model Branding {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId  String   @unique
+
+  logoUrl   String?
+  primary   String?
+  secondary String?
+}
+
+model TenantSecret {
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId         String   @unique
+  dbUrlCiphertext  String
+  encKeyCiphertext String
+  kmsKeyId         String?
+}
+
+model SuperAdminUser {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  username       String   @unique
+  passwordHash   String
+  lastLoginAt    DateTime?
+  failedAttempts Int      @default(0)
+  lockedUntil    DateTime?
 }
