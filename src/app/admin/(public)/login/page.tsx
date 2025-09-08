@@ -6,7 +6,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function Page(props: { searchParams?: Promise<{ returnTo?: string }> }) {
   const sp = (await props.searchParams) || {};
-  const returnTo = sp.returnTo || '/admin/intake';
+  const raw = sp.returnTo;
+  const returnTo = typeof raw === 'string' && raw.startsWith('/') ? raw : '/admin/intake';
   return (
     <main className="mx-auto max-w-sm p-6">
       <h1 className="mb-4 text-2xl font-semibold">Admin Login</h1>

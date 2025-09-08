@@ -7,6 +7,25 @@ import { routing } from './src/i18n/routing';
 // Locale routing via next-intl
 const intlMiddleware = createMiddleware(routing);
 
+function serializeCookie(
+  name: string,
+  value: string,
+  opts: {
+    httpOnly?: boolean;
+    sameSite?: 'lax' | 'strict' | 'none';
+    secure?: boolean;
+    path?: string;
+  },
+): string {
+  const parts = [`${name}=${encodeURIComponent(value)}`];
+  if (opts.path) parts.push(`Path=${opts.path}`);
+  const same = (opts.sameSite || 'lax').toLowerCase();
+  parts.push(`SameSite=${same.charAt(0).toUpperCase()}${same.slice(1)}`);
+  if (opts.secure) parts.push('Secure');
+  if (opts.httpOnly) parts.push('HttpOnly');
+  return parts.join('; ');
+}
+
 function b64urlToBytes(s: string): Uint8Array {
   let base64 = s.replace(/-/g, '+').replace(/_/g, '/');
   while (base64.length % 4) base64 += '=';
@@ -51,7 +70,11 @@ async function isValidSessionToken(token: string): Promise<boolean> {
     let ok = 0;
     for (let i = 0; i < expected.byteLength; i++) ok |= expected[i] ^ sig[i];
     if (ok !== 0) return false;
-    const parsed = JSON.parse(new TextDecoder().decode(body)) as { exp?: number; ver?: number };
+    const parsed = JSON.parse(new TextDecoder().decode(body)) as {
+      exp?: number;
+      ver?: number;
+      role?: string;
+    };
     const now = Math.floor(Date.now() / 1000);
     if (!parsed.exp || parsed.exp <= now) return false;
     if (parsed.ver !== 1) return false;
@@ -64,11 +87,20 @@ async function isValidSessionToken(token: string): Promise<boolean> {
 export default async function middleware(req: Request) {
   const url = new URL(req.url);
   const inProd = process.env.NODE_ENV === 'production';
+  const host = req.headers.get('host') || '';
   // Enforce HTTPS for admin routes in production when behind a proxy
   const proto = req.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
+
+  // Dev convenience: normalize localhost to a chosen tenant host to avoid cookie domain mismatches
+  if (!inProd && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)) {
+    const targetHost = process.env.DEV_TENANT_HOST || 'acme.localhost:3000';
+    const redirectUrl = `${url.protocol}//${targetHost}${url.pathname}${url.search}`;
+    return NextResponse.redirect(redirectUrl);
+  }
   if (inProd && proto !== 'https' && url.pathname.startsWith('/admin')) {
     const httpsUrl = new URL(url.toString());
     httpsUrl.protocol = 'https:';
+    console.log('[MW] redirecting to https for admin route');
     return NextResponse.redirect(httpsUrl);
   }
   // Normalize pathname by stripping a leading locale segment if present
@@ -81,9 +113,14 @@ export default async function middleware(req: Request) {
   if (normalizedPath.startsWith('/admin')) {
     // Allow login endpoints without session
     if (normalizedPath.startsWith('/admin/login')) {
-      const res = (await intlMiddleware(
+      const intlRes = (await intlMiddleware(
         req as unknown as Parameters<typeof intlMiddleware>[0],
-      )) as NextResponse;
+      )) as Response;
+      const res = new NextResponse(intlRes.body, {
+        headers: intlRes.headers,
+        status: intlRes.status,
+        statusText: intlRes.statusText,
+      });
       // Ensure CSRF cookie exists for admin pages
       const hasCsrf = (req.headers.get('cookie') || '').includes('ADMIN_CSRF=');
       if (!hasCsrf) {
@@ -91,7 +128,7 @@ export default async function middleware(req: Request) {
         const proto = req.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
         const secure = proto === 'https';
         // Set non-HttpOnly so the client can submit it as a hidden field
-        (res as NextResponse).cookies.set('ADMIN_CSRF', token, {
+        res.cookies.set('ADMIN_CSRF', token, {
           httpOnly: false,
           sameSite: 'lax',
           secure,
@@ -110,15 +147,20 @@ export default async function middleware(req: Request) {
       loginUrl.searchParams.set('returnTo', url.pathname + url.search);
       return NextResponse.redirect(loginUrl);
     }
-    const res = (await intlMiddleware(
+    const intlRes = (await intlMiddleware(
       req as unknown as Parameters<typeof intlMiddleware>[0],
-    )) as NextResponse;
+    )) as Response;
+    const res = new NextResponse(intlRes.body, {
+      headers: intlRes.headers,
+      status: intlRes.status,
+      statusText: intlRes.statusText,
+    });
     const hasCsrf = (req.headers.get('cookie') || '').includes('ADMIN_CSRF=');
     if (!hasCsrf) {
       const token = bytesToB64url(crypto.getRandomValues(new Uint8Array(16)));
       const proto = req.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
       const secure = proto === 'https';
-      (res as NextResponse).cookies.set('ADMIN_CSRF', token, {
+      res.cookies.set('ADMIN_CSRF', token, {
         httpOnly: false,
         sameSite: 'lax',
         secure,
@@ -127,10 +169,22 @@ export default async function middleware(req: Request) {
     }
     return res;
   }
+  // Gate tenant home behind login (keep /[locale]/intake public)
+  if (url.pathname === '/') {
+    const cookie = (req.headers.get('cookie') || '')
+      .split(';')
+      .find((c) => c.trim().startsWith('ADMIN_SESSION='));
+    const token = cookie ? decodeURIComponent(cookie.split('=')[1].trim()) : '';
+    if (!token || !(await isValidSessionToken(token))) {
+      const loginUrl = new URL('/admin/login', req.url);
+      loginUrl.searchParams.set('returnTo', url.pathname + url.search);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
   return intlMiddleware(req as unknown as Parameters<typeof intlMiddleware>[0]);
 }
 
 export const config = {
-  // Only run middleware on admin routes (with and without a locale prefix)
-  matcher: ['/admin/:path*', '/:locale/admin/:path*'],
+  // Run middleware on admin routes and tenant home
+  matcher: ['/', '/admin/:path*', '/:locale/admin/:path*'],
 };

@@ -1,0 +1,73 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("CONTROL_DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/control-client"
+  // Note: using a distinct output path to avoid collisions
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  slug      String   @unique // matches subdomain, e.g., "acme"
+  name      String
+
+  hosts     TenantHost[]
+  branding  Branding?
+  secrets   TenantSecret?
+}
+
+model TenantHost {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  host      String   @unique // e.g., acme.example.com or customdomain.com
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId  String
+}
+
+model Branding {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId  String   @unique
+
+  logoUrl   String?
+  primary   String? // CSS color
+  secondary String?
+}
+
+model TenantSecret {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId  String   @unique
+
+  // Encrypted at rest values. For KMS, store base64 ciphertext and key id.
+  dbUrlCiphertext   String
+  encKeyCiphertext  String
+  kmsKeyId          String?
+}
+
+model SuperAdminUser {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  username     String   @unique
+  passwordHash String
+
+  lastLoginAt    DateTime?
+  failedAttempts Int      @default(0)
+  lockedUntil    DateTime?
+}
+

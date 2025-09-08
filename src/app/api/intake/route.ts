@@ -4,8 +4,9 @@ import type { Prisma } from '@prisma/client';
 
 import { isLocale } from '@/i18n/config';
 import { encryptJsonToBuffer } from '@/lib/crypto';
-import { prisma } from '@/lib/prisma';
+import { verifyHCaptcha } from '@/lib/hcaptcha';
 import { rateLimit, rlKeyFromRequest } from '@/lib/rateLimit';
+import { getTenantClient, resolveTenant } from '@/lib/tenant';
 import { IntakeSchema } from '@/lib/validation/intake';
 
 export const runtime = 'nodejs';
@@ -34,8 +35,29 @@ function guessLocale(req: Request): string {
  */
 export async function POST(req: Request) {
   try {
-    // Basic rate limit: 5 requests/minute per IP
-    const rl = rateLimit(rlKeyFromRequest(req, 'intake'), 5, 60_000);
+    const host = req.headers.get('host') || '';
+    const tenant = await resolveTenant();
+    const tenantId = tenant?.id || 'unknown';
+
+    // Enforce same-origin for POST
+    const origin = (req.headers.get('origin') || '').toLowerCase();
+    const referer = (req.headers.get('referer') || '').toLowerCase();
+    const site = (req.headers.get('sec-fetch-site') || '').toLowerCase();
+    const url = new URL(req.url);
+    const expectedOrigin = `${url.protocol}//${host.toLowerCase()}`;
+    const sameOrigin = origin === expectedOrigin || (referer && referer.startsWith(expectedOrigin));
+    if (!sameOrigin || (site && site !== 'same-origin')) {
+      return NextResponse.json({ ok: false, message: 'Invalid origin' }, { status: 400 });
+    }
+
+    // Body size cap
+    const lenStr = req.headers.get('content-length');
+    if (lenStr && Number(lenStr) > 100_000) {
+      return NextResponse.json({ ok: false, message: 'Payload too large' }, { status: 413 });
+    }
+
+    // Rate limit: 5/min/IP per tenant
+    const rl = await rateLimit(rlKeyFromRequest(req, 'intake', tenantId), 5, 60_000);
     if (!rl.allowed) {
       return NextResponse.json({ ok: false, message: 'Too many requests' }, { status: 429 });
     }
@@ -43,6 +65,15 @@ export async function POST(req: Request) {
 
     if (json?.botField) {
       return NextResponse.json({ ok: false, message: 'Spam gedetecteerd' }, { status: 400 });
+    }
+
+    const captchaToken = String(json?.captchaToken || '');
+    const formTs = Number(json?.formTs || 0);
+    const remoteip = req.headers.get('x-forwarded-for')?.split(',')[0].trim();
+    const captchaOk = await verifyHCaptcha(captchaToken, remoteip || undefined);
+    const now = Date.now();
+    if (formTs > 0 && now - formTs < 3000) {
+      return NextResponse.json({ ok: false, message: 'Form filled too quickly' }, { status: 400 });
     }
 
     const parsed = IntakeSchema.safeParse(json);
@@ -92,14 +123,28 @@ export async function POST(req: Request) {
       ? data.medical.complicationsDetails
       : null;
 
-    const key = process.env.INTAKE_ENC_KEY;
-    if (!key) {
+    // Tenant encryption key fallback to env for single-tenant dev
+    const encKey = tenant?.encKey || process.env.INTAKE_ENC_KEY;
+    if (!encKey) {
       return NextResponse.json(
-        { ok: false, message: 'Server niet juist geconfigureerd (INTAKE_ENC_KEY ontbreekt)' },
+        { ok: false, message: 'Server niet juist geconfigureerd (tenant key ontbreekt)' },
         { status: 500 },
       );
     }
-    const encBlob = encryptJsonToBuffer(data, key);
+    const encBlob = encryptJsonToBuffer(data, encKey);
+
+    const { prisma } = (await getTenantClient()) || { prisma: null };
+    if (!prisma) {
+      return NextResponse.json({ ok: false, message: 'Tenant niet gevonden' }, { status: 400 });
+    }
+
+    // Spam scoring
+    let spamScore = 0;
+    if (!captchaOk) spamScore += 3;
+    if (json?.botField) spamScore += 5;
+    if (!userAgent) spamScore += 1;
+
+    const isSpam = spamScore >= 3;
 
     const created = await prisma.intakeSubmission.create({
       data: {
@@ -121,6 +166,7 @@ export async function POST(req: Request) {
         hadComplications,
         complicationsNote,
         encBlob,
+        isSpam,
       },
       select: { id: true, createdAt: true },
     });
