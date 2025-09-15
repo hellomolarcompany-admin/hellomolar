@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 
 import { controlPrisma } from './controlPlane';
 import { kmsDecryptBase64 } from './keys';
+import { prisma as defaultPrisma } from './prisma';
 import { getTenantPrisma } from './tenantDb';
 
 export type TenantResolved = {
@@ -61,7 +62,23 @@ export async function getTenantClient(): Promise<{
   prisma: ReturnType<typeof getTenantPrisma>;
 } | null> {
   const info = await resolveTenant();
-  if (!info) return null;
-  const prisma = getTenantPrisma(info.id, info.dbUrl);
-  return { info, prisma } as const;
+  if (info) {
+    const prisma = getTenantPrisma(info.id, info.dbUrl);
+    return { info, prisma } as const;
+  }
+  // Single-tenant fallback: use default Prisma client and env key
+  const dbUrl = process.env.DATABASE_URL || '';
+  const encKey = process.env.INTAKE_ENC_KEY || '';
+  if (!dbUrl || !encKey) return null;
+  return {
+    info: {
+      id: 'single',
+      slug: 'single',
+      name: 'Single Tenant',
+      dbUrl,
+      encKey,
+      logoUrl: null,
+    },
+    prisma: defaultPrisma as unknown as ReturnType<typeof getTenantPrisma>,
+  } as const;
 }

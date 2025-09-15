@@ -19,7 +19,31 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   try {
     const tenant = await getTenantClient();
     if (!tenant) return NextResponse.redirect(new URL('/admin/intake?err=tenant', req.url));
-    await tenant.prisma.intakeSubmission.delete({ where: { id } });
+
+    // Delete the intake submission and conditionally delete its linked patient
+    await tenant.prisma.$transaction(async (tx) => {
+      const rec = await tx.intakeSubmission.findUnique({
+        where: { id },
+        select: { patientId: true },
+      });
+      if (!rec) return; // nothing to delete
+
+      await tx.intakeSubmission.delete({ where: { id } });
+
+      if (rec.patientId) {
+        const remaining = await tx.intakeSubmission.count({ where: { patientId: rec.patientId } });
+        if (remaining === 0) {
+          // Delete the patient only if no other intake submissions reference it
+          try {
+            await tx.patient.delete({ where: { id: rec.patientId } });
+          } catch {
+            // Best-effort: ignore if FK or other constraints prevent deletion
+          }
+        }
+      }
+    });
+
+    // Audit log
     try {
       const ipInet = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || null;
       const userAgent = req.headers.get('user-agent') || null;

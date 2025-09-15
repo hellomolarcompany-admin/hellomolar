@@ -81,6 +81,23 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
             View original payload
           </button>
         </form>
+        {rec.patientId ? (
+          <button
+            type="button"
+            className="cursor-not-allowed rounded border px-3 py-1 text-gray-400"
+            disabled
+            title="Patient already linked"
+          >
+            Patient exists
+          </button>
+        ) : (
+          <form method="POST" action={`/admin/intake/${rec.id}/link-patient`}>
+            <CsrfField />
+            <button className="rounded border px-3 py-1" type="submit">
+              Create/Link patient
+            </button>
+          </form>
+        )}
         <DeleteConfirm id={rec.id} />
       </div>
     </main>

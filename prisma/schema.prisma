@@ -35,8 +35,16 @@ model IntakeSubmission {
 
   encBlob Bytes?
 
+  // Encryption metadata for rotation and audit
+  encKeyId String? // identifier for the key used to encrypt encBlob
+  encAlg   String? // e.g., 'AES-256-GCM'
+
   // Spam classification flag
   isSpam Boolean @default(false)
+
+  // Optional linkage to core Patient (for cross-module use)
+  patient   Patient? @relation(fields: [patientId], references: [id])
+  patientId String?
 
   @@index([createdAt])
   @@index([fullName])
@@ -71,6 +79,37 @@ model AdminAuditLog {
 
   @@index([createdAt])
   @@index([adminId, createdAt])
+}
+
+/// Core domain models (per-tenant DB)
+model Patient {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Minimal identifying fields; extend as needed by modules
+  firstName String
+  lastName  String
+  dob       DateTime?
+  email     String?
+  phone     String?
+
+  intakeSubmissions IntakeSubmission[]
+
+  @@index([lastName, firstName])
+  @@index([email])
+  @@index([phone])
+}
+
+model OutboxEvent {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  topic      String   // e.g., 'intake.submitted'
+  payload    Json
+  processedAt DateTime?
+
+  @@index([createdAt])
+  @@index([topic, createdAt])
 }
 
 /// Control plane models for multi-tenancy

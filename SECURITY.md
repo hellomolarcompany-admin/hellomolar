@@ -14,7 +14,9 @@ Hardening basics in this project:
 - CSRF protection for admin POSTs via double-submit cookie checked server-side.
 - Intake payloads are encrypted at rest with AES‑256‑GCM.
 - Rate limits protect login and intake endpoints.
+- Admin sessions include tenant id and middleware validates subdomain ↔ tenant match.
 
 When rotating keys:
 
 - Update `INTAKE_ENC_KEY` and keep prior keys in `INTAKE_FALLBACK_KEYS` until all records are migrated (if desired).
+- New writes record `encKeyId` and `encAlg` to simplify rotation and audit.

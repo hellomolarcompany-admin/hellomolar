@@ -91,12 +91,9 @@ export default async function middleware(req: Request) {
   // Enforce HTTPS for admin routes in production when behind a proxy
   const proto = req.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
 
-  // Dev convenience: normalize localhost to a chosen tenant host to avoid cookie domain mismatches
-  if (!inProd && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)) {
-    const targetHost = process.env.DEV_TENANT_HOST || 'acme.localhost:3000';
-    const redirectUrl = `${url.protocol}//${targetHost}${url.pathname}${url.search}`;
-    return NextResponse.redirect(redirectUrl);
-  }
+  // Skip normalization in development; rely on single-tenant fallback for localhost.
+
+  // No dev host normalization — keep localhost in development.
   if (inProd && proto !== 'https' && url.pathname.startsWith('/admin')) {
     const httpsUrl = new URL(url.toString());
     httpsUrl.protocol = 'https:';
@@ -147,6 +144,7 @@ export default async function middleware(req: Request) {
       loginUrl.searchParams.set('returnTo', url.pathname + url.search);
       return NextResponse.redirect(loginUrl);
     }
+    // Note: Avoid DB lookups in middleware (Edge). Tenant/session binding is validated server-side.
     const intlRes = (await intlMiddleware(
       req as unknown as Parameters<typeof intlMiddleware>[0],
     )) as Response;
@@ -185,6 +183,6 @@ export default async function middleware(req: Request) {
 }
 
 export const config = {
-  // Run middleware on admin routes and tenant home
-  matcher: ['/', '/admin/:path*', '/:locale/admin/:path*'],
+  // Standard app-page matcher (excludes api and static). Redirect logic is minimal now.
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };

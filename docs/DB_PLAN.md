@@ -5,11 +5,11 @@ This document outlines how intake submissions are stored, how to operate the dat
 ## Current State (Phase 1)
 
 - ORM: Prisma with PostgreSQL (`prisma/schema.prisma`)
-- Model: `IntakeSubmission`
+- Models: `IntakeSubmission`, `Patient` (core), `OutboxEvent`
   - Indexed timestamps, selected denormalized fields (name, dob, contact, country, flags)
   - JSON fields for medications, allergies, conditions
   - `encBlob` stores the full original JSON payload encrypted with AES‑256‑GCM
-- API: `POST /api/intake` validates (Zod), derives columns, encrypts payload, and persists
+- API: `POST /api/intake` validates (Zod), derives columns, encrypts payload, and persists; emits an `OutboxEvent` (best-effort)
 - Health endpoint: `GET /api/health/db` (diagnostics; requires admin session in production)
 
 ## Environment
@@ -20,6 +20,8 @@ Required variables:
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DBNAME
 DIRECT_URL=postgresql://USER:PASSWORD@HOST:PORT/DBNAME
 INTAKE_ENC_KEY=BASE64_32_BYTES   # openssl rand -base64 32
+MODULES=intake
+CONTROL_DATABASE_URL=postgres://... # separate control-plane DB
 ```
 
 ## Local Setup
@@ -40,6 +42,13 @@ pnpm dev
 - `locale`, `marketingOptIn`, `privacyAccepted`
 - `userAgent`, `ipInet`, optional `fingerprint`
 - `encBlob` (Bytes): AES‑256‑GCM buffer produced by `encryptJsonToBuffer`
+- `encKeyId`, `encAlg`: metadata for encryption
+- `patientId`: optional link to `Patient`
+
+Core:
+
+- `Patient { firstName, lastName, dob?, email?, phone? }`
+- `OutboxEvent { topic, payload Json, processedAt? }`
 
 ## Security
 
@@ -61,12 +70,14 @@ Phase 2 – Retrieval & Admin
 - Admin UI to list/search submissions
 - Secure decryption endpoint for `encBlob` (audit logged)
 - Role-based access control (RBAC) for staff
+- Create/Link Patient from intake
 
 Phase 3 – Notifications & Integrations
 
 - Optional email/SMS notification on new submission
 - Export endpoints (CSV) and EHR/PM integrations
 - Rate limiting and bot protection (e.g., Turnstile) on form and API
+- Outbox consumer(s) to propagate events to modules
 
 Phase 4 – Compliance & Data Lifecycle
 

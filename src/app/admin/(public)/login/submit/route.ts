@@ -9,17 +9,7 @@ export async function POST(req: Request) {
   const proto = req.headers.get('x-forwarded-proto') || new URL(req.url).protocol.replace(':', '');
   const origin = `${proto}://${host || 'localhost:3000'}`;
   const abs = (path: string) => new URL(path, origin);
-  // Dev host normalization: prevent posting to localhost; redirect to tenant host
-  try {
-    const host = req.headers.get('host') || '';
-    const inProd = process.env.NODE_ENV === 'production';
-    const devHost = process.env.DEV_TENANT_HOST || 'acme.localhost:3000';
-    if (!inProd && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)) {
-      const u = new URL(req.url);
-      const redirect = `${u.protocol}//${devHost}${u.pathname}${u.search}`;
-      return NextResponse.redirect(redirect, 303);
-    }
-  } catch {}
+  // Note: In development we accept localhost directly (no subdomain redirect).
   // Throttle login attempts: 10/min/IP
   const tenant = await getTenantClient();
   const tid = tenant?.info.id || 'unknown';
