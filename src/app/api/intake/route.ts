@@ -5,8 +5,10 @@ import type { Prisma } from '@prisma/client';
 import { isLocale } from '@/i18n/config';
 import { encryptJsonToBuffer } from '@/lib/crypto';
 import { verifyHCaptcha } from '@/lib/hcaptcha';
+import { modules } from '@/lib/modules';
+import { prisma as defaultPrisma } from '@/lib/prisma';
 import { rateLimit, rlKeyFromRequest } from '@/lib/rateLimit';
-import { getTenantClient, resolveTenant } from '@/lib/tenant';
+import { getTenantClient } from '@/lib/tenant';
 import { IntakeSchema } from '@/lib/validation/intake';
 
 export const runtime = 'nodejs';
@@ -35,9 +37,12 @@ function guessLocale(req: Request): string {
  */
 export async function POST(req: Request) {
   try {
+    if (!modules.intake) {
+      return NextResponse.json({ ok: false, message: 'Not Found' }, { status: 404 });
+    }
     const host = req.headers.get('host') || '';
-    const tenant = await resolveTenant();
-    const tenantId = tenant?.id || 'unknown';
+    const tenantCtx = await getTenantClient();
+    const tenantId = tenantCtx?.info.id || 'global';
 
     // Enforce same-origin for POST
     const origin = (req.headers.get('origin') || '').toLowerCase();
@@ -124,7 +129,7 @@ export async function POST(req: Request) {
       : null;
 
     // Tenant encryption key fallback to env for single-tenant dev
-    const encKey = tenant?.encKey || process.env.INTAKE_ENC_KEY;
+    const encKey = tenantCtx?.info.encKey || process.env.INTAKE_ENC_KEY;
     if (!encKey) {
       return NextResponse.json(
         { ok: false, message: 'Server niet juist geconfigureerd (tenant key ontbreekt)' },
@@ -132,11 +137,10 @@ export async function POST(req: Request) {
       );
     }
     const encBlob = encryptJsonToBuffer(data, encKey);
+    const encKeyId = tenantCtx?.info ? `tenant:${tenantCtx.info.id}:default` : 'env:INTAKE_ENC_KEY';
+    const encAlg = 'AES-256-GCM';
 
-    const { prisma } = (await getTenantClient()) || { prisma: null };
-    if (!prisma) {
-      return NextResponse.json({ ok: false, message: 'Tenant niet gevonden' }, { status: 400 });
-    }
+    const prisma = tenantCtx?.prisma || defaultPrisma;
 
     // Spam scoring
     let spamScore = 0;
@@ -166,10 +170,34 @@ export async function POST(req: Request) {
         hadComplications,
         complicationsNote,
         encBlob,
+        encKeyId,
+        encAlg,
         isSpam,
       },
       select: { id: true, createdAt: true },
     });
+
+    // Emit outbox event for decoupled consumers (best-effort, non-blocking)
+    try {
+      await prisma.outboxEvent.create({
+        data: {
+          topic: 'intake.submitted',
+          payload: {
+            id: created.id,
+            createdAt: created.createdAt,
+            tenantId,
+            fullName,
+            email,
+            phone: primaryPhone,
+            residentType,
+            country,
+            isSpam,
+          },
+        },
+      });
+    } catch {
+      // ignore if table not present yet
+    }
 
     if (process.env.NODE_ENV === 'development') {
       console.log('New intake stored:', created);

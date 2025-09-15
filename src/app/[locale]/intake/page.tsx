@@ -1,8 +1,10 @@
 import type { AbstractIntlMessages } from 'next-intl';
 import { createTranslator } from 'next-intl';
+import { notFound } from 'next/navigation';
 
 import IntakeFormClient from '@/app/intake/IntakeFormClient';
 import { type Locale } from '@/i18n/config';
+import { modules } from '@/lib/modules';
 
 const dictionaries: Record<Locale, () => Promise<AbstractIntlMessages>> = {
   nl: () => import('@/messages/nl.json').then((m) => m.default),
@@ -19,6 +21,7 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
 }
 
 export default function Page() {
+  if (!modules.intake) return notFound();
   return (
     <main className="min-h-screen">
       <div className="mx-auto max-w-4xl py-6">

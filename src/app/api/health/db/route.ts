@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { getTenantClient } from '@/lib/tenant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,7 +44,7 @@ function safeParseDbUrl(raw?: string): DbUrlInfo {
  * Health diagnostics for database connectivity and basic queries.
  * Returns env info and success/error for each step.
  */
-export async function GET() {
+export async function GET(req: Request) {
   // Always require an authenticated admin session
   if (!(await getSession())) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
@@ -70,6 +70,12 @@ export async function GET() {
       countIntakeSubmission: { ok: false },
     },
   };
+
+  const tenant = await getTenantClient();
+  if (!tenant) {
+    return NextResponse.json({ ok: false, error: 'Tenant not found' }, { status: 400 });
+  }
+  const prisma = tenant.prisma;
 
   try {
     await prisma.$connect();

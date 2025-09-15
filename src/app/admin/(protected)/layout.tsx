@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 
 import { verifySession } from '@/lib/auth';
+import { resolveTenant } from '@/lib/tenant';
 import HeaderImage from '@/ui/HeaderImage';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -8,7 +9,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const token = store.get('ADMIN_SESSION')?.value || '';
   const session = token ? verifySession(token) : null;
   // Ensure tenant context matches session
-  if (!session || session.role !== 'tenant_admin') {
+  const t = await resolveTenant();
+  if (!session || session.role !== 'tenant_admin' || (t && session.tid && session.tid !== t.id)) {
     return (
       <main className="mx-auto max-w-xl p-6 text-sm">
         <h1 className="mb-3 text-lg font-semibold">Unauthorized</h1>

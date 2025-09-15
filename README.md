@@ -1,4 +1,4 @@
-# HelloMolar Intake
+# HelloMolar Intake (Modular)
 
 A multilingual (NL/EN/ES/PAP) intake form for a dental clinic. Built with Next.js 15 (App Router), TypeScript, Tailwind CSS, react-hook-form, Zod, next-intl v4, and Prisma (PostgreSQL). The API validates and stores submissions and keeps an encrypted archive of the original payload.
 
@@ -20,7 +20,8 @@ A multilingual (NL/EN/ES/PAP) intake form for a dental clinic. Built with Next.j
 - react-hook-form + @hookform/resolvers
 - Zod
 - next-intl v4
-- Prisma (PostgreSQL)
+- Prisma (PostgreSQL) — per-tenant DB
+- Control plane DB (PostgreSQL) — tenants/hosts/secrets
 
 ## Requirements
 
@@ -50,6 +51,8 @@ DIRECT_URL=postgresql://USER:PASSWORD@HOST:PORT/DBNAME
 SESSION_SECRET=REPLACE_WITH_LONG_RANDOM
 # 32 random bytes, base64-encoded (used for AES-256-GCM)
 INTAKE_ENC_KEY=REPLACE_WITH_BASE64_32B
+MODULES=intake                       # enable desired modules (comma-separated)
+CONTROL_DATABASE_URL=postgres://...  # control-plane DB (optional in single-tenant)
 ```
 
 Generate a suitable key:
@@ -80,7 +83,7 @@ AWS_REGION=your_aws_region
 # App still supports single-tenant fallback via INTAKE_ENC_KEY for local dev
 ```
 
-2. Migrate database (adds control-plane tables and `isSpam`)
+2. Migrate database (adds control-plane tables, `isSpam`, core Patient/Outbox)
 
 ```bash
 pnpm prisma generate
@@ -121,7 +124,8 @@ src/
     intake/IntakeForm.tsx   # Intake form (client)
   api/
       intake/route.ts       # Save intake (POST)
-      health/db/route.ts    # DB diagnostics (GET) (auth required)
+      health/db/route.ts    # Tenant DB diagnostics (GET) (auth required)
+      health/control/route.ts # Control DB diagnostics (GET) (auth required)
       _health/db/route.ts   # Alias to health/db (auth required)
     globals.css
   components/
@@ -134,6 +138,7 @@ src/
   lib/
     validation/intake.ts    # Zod schema + types
     prisma.ts               # Prisma client
+    modules.ts              # Module registry via env
     crypto.ts               # AES-256-GCM helpers
 middleware.ts               # next-intl middleware
 ```
@@ -153,10 +158,23 @@ middleware.ts               # next-intl middleware
 - Validation: Zod server-side; rejects spam via honeypot field
 - Persistence: stores selected fields in columns and the full JSON payload encrypted as `encBlob`
 - Encryption: AES‑256‑GCM with `INTAKE_ENC_KEY` (base64‑encoded 32‑byte key)
+  - Encryption metadata stored alongside payload (key id + algorithm)
+  - Emits an `OutboxEvent` topic `intake.submitted` for async consumers
 
 `GET /api/health/db` (or `/api/_health/db`)
 
 - Returns connectivity diagnostics (auth required in all environments).
+
+`GET /api/health/control`
+
+- Returns control-plane connectivity diagnostics (auth required).
+
+## Modularity
+
+- Enable/disable modules via `MODULES` env var (comma-separated). Default: all enabled for backwards compatibility.
+- Intake routes return 404 when the `intake` module is disabled.
+- Core `Patient` model in the tenant DB enables other modules to link to a canonical patient.
+- Outbox pattern (`OutboxEvent`) enables decoupled processing by optional modules.
 
 ## Scripts
 
@@ -176,6 +194,7 @@ pnpm start       # Start production server
 - Configure CORS/CSRF only if exposing the API cross‑origin
 - Restrict DB credentials and network access
 - Rate limiting protects `/api/intake` and `/admin/login/submit`
+- Session/tenant binding on admin routes: the session tenant id must match the subdomain.
 
 ### Security Headers
 
@@ -191,6 +210,7 @@ pnpm start       # Start production server
 - Required secrets: `SESSION_SECRET` (32+ chars), `INTAKE_ENC_KEY` (base64 32 bytes), DB URLs.
 - Rotate any credentials that were ever committed or shared. For Git history cleanup, use `git filter-repo` (or `git filter-branch` as a last resort) to remove `.env*` and force-push, then rotate creds at the provider.
 - In CI/CD, use your platform’s secret manager (e.g., Vercel/Cloud provider) instead of checked-in files.
+  - If any real secrets or bootstrap tokens were committed previously, rotate them immediately.
 
 ### Admin Bootstrap (first admin)
 
