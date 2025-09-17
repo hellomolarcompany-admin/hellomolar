@@ -2,6 +2,16 @@
 
 A multilingual (NL/EN/ES/PAP) intake form for a dental clinic. Built with Next.js 15 (App Router), TypeScript, Tailwind CSS, react-hook-form, Zod, next-intl v4, and Prisma (PostgreSQL). The API validates and stores submissions and keeps an encrypted archive of the original payload.
 
+Quick links:
+
+- Getting started: `docs/DEVELOPMENT.md`
+- Environment reference: `docs/ENV.md`
+- Architecture overview: `docs/ARCHITECTURE.md`
+- API reference: `docs/API.md`
+- Multi‑tenancy: `docs/TENANCY.md`
+- Operations: `docs/OPERATIONS.md`
+- Security policy: `SECURITY.md`
+
 ## Features
 
 - Multilingual UI: Dutch, English, Spanish, Papiamentu (next-intl v4 + middleware)
@@ -11,6 +21,7 @@ A multilingual (NL/EN/ES/PAP) intake form for a dental clinic. Built with Next.j
 - Medical history with multi-select and conditional detail fields
 - Persists to PostgreSQL via Prisma; raw payload encrypted (AES‑256‑GCM)
 - Code quality: ESLint, Prettier, TypeScript checks, Husky pre-commit
+- Optional multi‑tenant mode with control‑plane DB + AWS KMS‑backed secrets
 
 ## Tech Stack
 
@@ -28,7 +39,7 @@ A multilingual (NL/EN/ES/PAP) intake form for a dental clinic. Built with Next.j
 - Node.js 18+
 - pnpm (recommended): `npm i -g pnpm`
 - PostgreSQL database URL
-- (Multi-tenant) Redis for rate limits, AWS KMS for secrets, hCaptcha keys
+- (Multi‑tenant) Redis for rate limits, AWS KMS for secrets, hCaptcha keys
 
 ## Quick Start
 
@@ -68,9 +79,9 @@ pnpm prisma generate
 pnpm prisma migrate dev --name init
 ```
 
-You can also copy `.env.example` to `.env` and fill in values. Never commit real secrets.
+You can also copy `.env.example` to `.env` and fill in values. Never commit real secrets. See `docs/ENV.md` for all supported variables.
 
-### Multi-Tenant Setup (Subdomains)
+### Multi‑Tenant Setup (Subdomains)
 
 1. Configure environment
 
@@ -83,7 +94,7 @@ AWS_REGION=your_aws_region
 # App still supports single-tenant fallback via INTAKE_ENC_KEY for local dev
 ```
 
-2. Migrate database (adds control-plane tables, `isSpam`, core Patient/Outbox)
+2. Migrate database (adds control‑plane tables, `isSpam`, core Patient/Outbox)
 
 ```bash
 pnpm prisma generate
@@ -141,6 +152,8 @@ src/
     modules.ts              # Module registry via env
     crypto.ts               # AES-256-GCM helpers
 middleware.ts               # next-intl middleware
+
+More details in `docs/ARCHITECTURE.md`.
 ```
 
 ## Internationalization (next-intl v4)
@@ -169,6 +182,8 @@ middleware.ts               # next-intl middleware
 
 - Returns control-plane connectivity diagnostics (auth required).
 
+See the full endpoint details and payload schema in `docs/API.md`.
+
 ## Modularity
 
 - Enable/disable modules via `MODULES` env var (comma-separated). Default: all enabled for backwards compatibility.
@@ -185,6 +200,8 @@ pnpm format      # Prettier
 pnpm typecheck   # TypeScript
 pnpm build       # Next.js production build
 pnpm start       # Start production server
+
+Run `pnpm prepare` once to install Husky git hooks.
 ```
 
 ## Security & Privacy
@@ -195,6 +212,8 @@ pnpm start       # Start production server
 - Restrict DB credentials and network access
 - Rate limiting protects `/api/intake` and `/admin/login/submit`
 - Session/tenant binding on admin routes: the session tenant id must match the subdomain.
+
+See `SECURITY.md` for our full policy and practices.
 
 ### Security Headers
 
@@ -229,3 +248,5 @@ pnpm start       # Start production server
 - Keep ESLint/Prettier/TypeScript clean
 - Keep all UI strings in `src/messages/*.json`
 - Pre-push checks run `pnpm typecheck && pnpm lint && pnpm build`
+
+See `CONTRIBUTING.md` for coding standards, PR workflow, and commit tips.
