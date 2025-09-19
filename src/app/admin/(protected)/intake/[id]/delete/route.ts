@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+import type { Prisma } from '@prisma/client';
+
 import { getSession, verifyCsrfForRequest } from '@/lib/auth';
 import { getTenantClient } from '@/lib/tenant';
 
@@ -21,7 +23,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (!tenant) return NextResponse.redirect(new URL('/admin/intake?err=tenant', req.url));
 
     // Delete the intake submission and conditionally delete its linked patient
-    await tenant.prisma.$transaction(async (tx) => {
+    await tenant.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const rec = await tx.intakeSubmission.findUnique({
         where: { id },
         select: { patientId: true },
