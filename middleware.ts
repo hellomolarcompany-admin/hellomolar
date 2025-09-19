@@ -7,25 +7,6 @@ import { routing } from './src/i18n/routing';
 // Locale routing via next-intl
 const intlMiddleware = createMiddleware(routing);
 
-function serializeCookie(
-  name: string,
-  value: string,
-  opts: {
-    httpOnly?: boolean;
-    sameSite?: 'lax' | 'strict' | 'none';
-    secure?: boolean;
-    path?: string;
-  },
-): string {
-  const parts = [`${name}=${encodeURIComponent(value)}`];
-  if (opts.path) parts.push(`Path=${opts.path}`);
-  const same = (opts.sameSite || 'lax').toLowerCase();
-  parts.push(`SameSite=${same.charAt(0).toUpperCase()}${same.slice(1)}`);
-  if (opts.secure) parts.push('Secure');
-  if (opts.httpOnly) parts.push('HttpOnly');
-  return parts.join('; ');
-}
-
 function b64urlToBytes(s: string): Uint8Array {
   let base64 = s.replace(/-/g, '+').replace(/_/g, '/');
   while (base64.length % 4) base64 += '=';
@@ -87,7 +68,6 @@ async function isValidSessionToken(token: string): Promise<boolean> {
 export default async function middleware(req: Request) {
   const url = new URL(req.url);
   const inProd = process.env.NODE_ENV === 'production';
-  const host = req.headers.get('host') || '';
   // Enforce HTTPS for admin routes in production when behind a proxy
   const proto = req.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
 
