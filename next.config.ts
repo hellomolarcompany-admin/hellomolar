@@ -26,10 +26,10 @@ const nextConfig: NextConfig = {
           "font-src 'self'",
           "style-src 'self' 'unsafe-inline'",
           // Next.js may inject inline scripts for hydration; keep report-only to gather signals first
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com",
           "connect-src 'self'",
-          'base-uri \"none\"',
-          'frame-ancestors \"none\"',
+          "base-uri 'none'",
+          "frame-ancestors 'none'",
         ].join('; '),
       },
     ];
