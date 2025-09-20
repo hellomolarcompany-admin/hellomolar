@@ -44,7 +44,7 @@ function safeParseDbUrl(raw?: string): DbUrlInfo {
  * Health diagnostics for database connectivity and basic queries.
  * Returns env info and success/error for each step.
  */
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   // Always require an authenticated admin session
   if (!(await getSession())) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });

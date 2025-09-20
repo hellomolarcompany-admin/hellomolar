@@ -41,7 +41,6 @@ export default function IntakeForm() {
     handleSubmit,
     control,
     formState: { errors },
-    reset,
     setValue,
     getValues,
   } = useForm<IntakeFormData>({
