@@ -26,10 +26,11 @@ const nextConfig: NextConfig = {
           "font-src 'self'",
           "style-src 'self' 'unsafe-inline'",
           // Next.js may inject inline scripts for hydration; keep report-only to gather signals first
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com",
-          "connect-src 'self'",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://vercel.live https://js.hcaptcha.com",
+          "connect-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com https://js.hcaptcha.com https://vercel.live",
           "base-uri 'none'",
           "frame-ancestors 'none'",
+          "frame-src 'self' https://www.hcaptcha.com https://js.hcaptcha.com https://vercel.live",
         ].join('; '),
       },
     ];
