@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
           "connect-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com https://js.hcaptcha.com https://vercel.live",
           "base-uri 'none'",
           "frame-ancestors 'none'",
-          "frame-src 'self' https://www.hcaptcha.com https://js.hcaptcha.com https://vercel.live",
+          "frame-src 'self' https://www.hcaptcha.com https://js.hcaptcha.com https://newassets.hcaptcha.com https://vercel.live",
         ].join('; '),
       },
     ];
