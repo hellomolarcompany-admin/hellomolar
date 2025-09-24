@@ -67,14 +67,23 @@ async function isValidSessionToken(token: string): Promise<boolean> {
 
 export default async function middleware(req: Request) {
   const url = new URL(req.url);
+  console.log('[MW] incoming', {
+    method: req.method,
+    pathname: url.pathname,
+    origin: req.headers.get('origin'),
+    host: req.headers.get('host'),
+    fetchSite: req.headers.get('sec-fetch-site'),
+  });
   if (req.method === 'OPTIONS') {
+    const allowMethods = req.headers.get('access-control-request-method') || 'GET,POST,OPTIONS';
+    const allowHeaders = req.headers.get('access-control-request-headers') || '*';
+    console.log('[MW] responding to OPTIONS', { allowMethods, allowHeaders, url: url.toString() });
     const res = new NextResponse(null, { status: 204 });
-    res.headers.set('Access-Control-Allow-Origin', url.origin);
-    res.headers.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    res.headers.set(
-      'Access-Control-Allow-Headers',
-      req.headers.get('access-control-request-headers') || '*',
-    );
+    const allowOrigin = req.headers.get('origin') || url.origin;
+    res.headers.set('Access-Control-Allow-Origin', allowOrigin);
+    res.headers.set('Access-Control-Allow-Methods', allowMethods);
+    res.headers.set('Access-Control-Allow-Headers', allowHeaders);
+    res.headers.set('Access-Control-Max-Age', '600');
     return res;
   }
   const inProd = process.env.NODE_ENV === 'production';
