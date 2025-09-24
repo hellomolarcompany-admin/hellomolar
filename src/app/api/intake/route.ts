@@ -199,10 +199,6 @@ export async function POST(req: Request) {
       // ignore if table not present yet
     }
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('New intake stored:', created);
-    }
-
     return NextResponse.json({ ok: true, id: created.id, createdAt: created.createdAt });
   } catch (err) {
     console.error(err);

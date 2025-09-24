@@ -316,10 +316,6 @@ export default function IntakeForm() {
           })),
         );
 
-        console.log('residentType:', residentType);
-
-        console.log('formValues:', getValues());
-
         console.groupEnd();
       } catch {
         // ignore logging failures
