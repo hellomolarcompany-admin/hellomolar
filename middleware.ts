@@ -68,8 +68,14 @@ async function isValidSessionToken(token: string): Promise<boolean> {
 export default async function middleware(req: Request) {
   const url = new URL(req.url);
   if (req.method === 'OPTIONS') {
-    // Allow preflight checks to pass through without auth logic
-    return NextResponse.next();
+    const res = new NextResponse(null, { status: 204 });
+    res.headers.set('Access-Control-Allow-Origin', url.origin);
+    res.headers.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.headers.set(
+      'Access-Control-Allow-Headers',
+      req.headers.get('access-control-request-headers') || '*',
+    );
+    return res;
   }
   const inProd = process.env.NODE_ENV === 'production';
   // Enforce HTTPS for admin routes in production when behind a proxy
