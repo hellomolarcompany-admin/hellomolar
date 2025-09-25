@@ -143,6 +143,31 @@
     "validation": {
       "modalTitle": "Please fix the following",
       "generic": "There are invalid or missing fields."
+    },
+    "privacyModal": {
+      "title": "Privacy policy",
+      "sections": {
+        "intro": {
+          "title": "Overview",
+          "body": "This privacy policy explains how Hello Molar collects, uses and protects your personal information when you complete our registration form."
+        },
+        "dataCollection": {
+          "title": "What data we collect",
+          "body": "We collect the information you submit on this form, including contact details, medical history and consents, so that we can provide safe dental care and communicate with you about your treatment."
+        },
+        "dataUse": {
+          "title": "How we use your data",
+          "body": "Your data is used to assess your dental needs, plan appointments, comply with legal obligations and, when you opt in, share updates about our services. We do not use your information for unrelated purposes."
+        },
+        "dataSharing": {
+          "title": "When we share data",
+          "body": "We only share your information with trusted partners such as laboratories or specialists when necessary for your care, or when required by law. We never sell your personal data."
+        },
+        "rights": {
+          "title": "Your rights",
+          "body": "You may request access, correction or deletion of your personal data, or withdraw consent where applicable. Contact us at privacy@hellomolar.com to exercise your rights or ask questions."
+        }
+      }
     }
   }
 }

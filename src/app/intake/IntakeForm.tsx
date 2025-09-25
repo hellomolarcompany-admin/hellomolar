@@ -19,6 +19,8 @@ import {
 import Button from '@/ui/Button';
 import Checkbox from '@/ui/Checkbox';
 
+import PrivacyPolicyModal from './PrivacyPolicyModal';
+
 export default function IntakeForm() {
   /**
    * Intake form rendered as a client component.
@@ -35,6 +37,7 @@ export default function IntakeForm() {
     [],
   );
   const [showServerModal, setShowServerModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   const {
     register,
@@ -422,6 +425,7 @@ export default function IntakeForm() {
           </div>
         </div>
       )}
+      <PrivacyPolicyModal open={showPrivacyModal} onClose={() => setShowPrivacyModal(false)} />
 
       {showValidationModal && (
         <div
@@ -920,7 +924,8 @@ export default function IntakeForm() {
               onClick={(e) => {
                 // Prevent toggling the checkbox and avoid page jump to top
                 e.stopPropagation();
-                // TODO: open privacy policy modal or navigate to a policy page
+                e.preventDefault();
+                setShowPrivacyModal(true);
               }}
             >
               {t('labels.privacyPolicy')}
