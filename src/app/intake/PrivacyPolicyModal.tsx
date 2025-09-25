@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 import Button from '@/ui/Button';
 
@@ -31,15 +31,15 @@ type SectionKey =
 
 type SectionContent = {
   title: string;
-  paragraphs?: string[];
   intro?: string;
-  bullets?: string[];
+  paragraphs?: Record<string, string>;
+  bullets?: Record<string, string>;
   subsections?: Record<
     string,
     {
       title?: string;
-      paragraphs?: string[];
-      bullets?: string[];
+      paragraphs?: Record<string, string>;
+      bullets?: Record<string, string>;
     }
   >;
   note?: string;
@@ -70,6 +70,7 @@ const SUBSECTION_ORDER: Partial<Record<SectionKey, readonly string[]>> = {
 
 export default function PrivacyPolicyModal({ open, onClose }: PrivacyPolicyModalProps) {
   const t = useTranslations('intake');
+  const locale = useLocale();
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -93,6 +94,23 @@ export default function PrivacyPolicyModal({ open, onClose }: PrivacyPolicyModal
   }, [open]);
 
   const sectionKeys = useMemo(() => SECTION_ORDER, []);
+  const effectiveDate = useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }).format(new Date());
+    } catch {
+      return new Intl.DateTimeFormat(locale, {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }).format(new Date());
+    }
+  }, [locale]);
+
+  const toList = (map?: Record<string, string>) => (map ? Object.values(map) : []);
 
   if (!open) return null;
 
@@ -116,7 +134,7 @@ export default function PrivacyPolicyModal({ open, onClose }: PrivacyPolicyModal
               {t('privacyModal.title')}
             </h2>
             <div className="mt-1 text-xs text-slate-600">
-              <p>{t('privacyModal.effectiveDate')}</p>
+              <p>{t('privacyModal.effectiveDate', { date: effectiveDate })}</p>
               <p>{t('privacyModal.lastUpdated')}</p>
             </div>
           </div>
@@ -137,19 +155,21 @@ export default function PrivacyPolicyModal({ open, onClose }: PrivacyPolicyModal
               }) as SectionContent;
               const subsections = section.subsections ?? {};
               const subsectionKeys = SUBSECTION_ORDER[key] || Object.keys(subsections);
+              const paragraphs = toList(section.paragraphs);
+              const bullets = toList(section.bullets);
 
               return (
                 <li key={key} className="space-y-3">
                   <h3 className="text-base font-semibold text-slate-900">{section.title}</h3>
-                  {section.paragraphs?.map((paragraph, index) => (
+                  {paragraphs.map((paragraph, index) => (
                     <p key={index} className="leading-relaxed">
                       {paragraph}
                     </p>
                   ))}
                   {section.intro ? <p className="leading-relaxed">{section.intro}</p> : null}
-                  {section.bullets ? (
+                  {bullets.length > 0 ? (
                     <ul className="list-disc space-y-1 pl-5">
-                      {section.bullets.map((item, index) => (
+                      {bullets.map((item, index) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ul>
@@ -159,19 +179,21 @@ export default function PrivacyPolicyModal({ open, onClose }: PrivacyPolicyModal
                       {subsectionKeys.map((subKey) => {
                         const subsection = subsections[subKey];
                         if (!subsection) return null;
+                        const subParagraphs = toList(subsection.paragraphs);
+                        const subBullets = toList(subsection.bullets);
                         return (
                           <div key={subKey} className="space-y-2">
                             {subsection.title ? (
                               <h4 className="font-medium text-slate-900">{subsection.title}</h4>
                             ) : null}
-                            {subsection.paragraphs?.map((paragraph, index) => (
+                            {subParagraphs.map((paragraph, index) => (
                               <p key={index} className="leading-relaxed">
                                 {paragraph}
                               </p>
                             ))}
-                            {subsection.bullets ? (
+                            {subBullets.length > 0 ? (
                               <ul className="list-disc space-y-1 pl-5">
-                                {subsection.bullets.map((item, index) => (
+                                {subBullets.map((item, index) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>

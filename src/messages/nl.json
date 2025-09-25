@@ -159,161 +159,167 @@
     },
     "privacyModal": {
       "title": "Privacy Policy – HelloMolar",
-      "effectiveDate": "Effective Date: 25/09/2025",
+      "effectiveDate": "Effective Date: {date}",
       "lastUpdated": "Last Updated: 25/09/2025",
       "sections": {
         "whoWeAre": {
           "title": "1. Who We Are",
-          "paragraphs": [
-            "Nefar BV (\"HelloMolar,\" \"we,\" \"us,\" or \"our\") respects your privacy. HelloMolar is developed and operated by:",
-            "Nefar BV",
-            "Sabadeco Shores 33",
-            "Kralendijk, Bonaire, Netherlands",
-            "Email: hello@hellomolar.com",
-            "Privacy Contact: privacy@hellomolar.com"
-          ]
+          "paragraphs": {
+            "p1": "Nefar BV (\"HelloMolar,\" \"we,\" \"us,\" or \"our\") respects your privacy. HelloMolar is developed and operated by:",
+            "p2": "Nefar BV",
+            "p3": "Sabadeco Shores 33",
+            "p4": "Kralendijk, Bonaire, Netherlands",
+            "p5": "Email: hello@hellomolar.com",
+            "p6": "Privacy Contact: privacy@hellomolar.com"
+          }
         },
         "scope": {
           "title": "2. Scope",
           "intro": "This Privacy Policy applies to:",
-          "bullets": [
-            "Dental practices using HelloMolar for patient and staff management",
-            "Patients accessing HelloMolar through the mobile app or web portal",
-            "Users worldwide, with specific provisions for EU/EEA residents (GDPR), US residents (HIPAA, CCPA/CPRA), and other applicable jurisdictions"
-          ]
+          "bullets": {
+            "b1": "Dental practices using HelloMolar for patient and staff management",
+            "b2": "Patients accessing HelloMolar through the mobile app or web portal",
+            "b3": "Users worldwide, with specific provisions for EU/EEA residents (GDPR), US residents (HIPAA, CCPA/CPRA), and other applicable jurisdictions"
+          }
         },
         "informationWeCollect": {
           "title": "3. Information We Collect",
           "subsections": {
             "patient": {
               "title": "Patient Data",
-              "bullets": [
-                "Name, address, contact details",
-                "Dental and medical history",
-                "Insurance information",
-                "Billing and payment records"
-              ]
+              "bullets": {
+                "b1": "Name, address, contact details",
+                "b2": "Dental and medical history",
+                "b3": "Insurance information",
+                "b4": "Billing and payment records"
+              }
             },
             "staff": {
               "title": "Staff Data",
-              "bullets": ["Name, contact details", "Work schedules", "Payroll and HR-related data"]
+              "bullets": {
+                "b1": "Name, contact details",
+                "b2": "Work schedules",
+                "b3": "Payroll and HR-related data"
+              }
             },
             "technical": {
               "title": "Technical Data",
-              "bullets": [
-                "IP address, browser/device information",
-                "Usage logs for security and analytics"
-              ]
+              "bullets": {
+                "b1": "IP address, browser/device information",
+                "b2": "Usage logs for security and analytics"
+              }
             }
           }
         },
         "howWeUseInformation": {
           "title": "4. How We Use Your Information",
           "intro": "We process your data for the following purposes:",
-          "bullets": [
-            "Appointment scheduling and management",
-            "Billing and payment processing",
-            "Secure patient communications",
-            "Clinical record keeping",
-            "Internal analytics to improve services",
-            "Marketing communications (with consent)",
-            "AI-powered features (e.g., data processing for scheduling and patient management), in compliance with privacy laws"
-          ]
+          "bullets": {
+            "b1": "Appointment scheduling and management",
+            "b2": "Billing and payment processing",
+            "b3": "Secure patient communications",
+            "b4": "Clinical record keeping",
+            "b5": "Internal analytics to improve services",
+            "b6": "Marketing communications (with consent)",
+            "b7": "AI-powered features (e.g., data processing for scheduling and patient management), in compliance with privacy laws"
+          }
         },
         "legalBasis": {
           "title": "5. Legal Basis for Processing (EU/EEA Residents – GDPR)",
           "intro": "If you are in the EU/EEA, we process your personal data under the following bases:",
-          "bullets": [
-            "Contractual necessity: To provide services you request",
-            "Legal obligation: To maintain records as required by law",
-            "Legitimate interests: To improve and secure our services",
-            "Consent: For marketing and optional services"
-          ]
+          "bullets": {
+            "b1": "Contractual necessity: To provide services you request",
+            "b2": "Legal obligation: To maintain records as required by law",
+            "b3": "Legitimate interests: To improve and secure our services",
+            "b4": "Consent: For marketing and optional services"
+          }
         },
         "hipaa": {
           "title": "6. HIPAA Compliance (US Residents)",
-          "paragraphs": [
-            "For US dental practices, HelloMolar acts as a Business Associate under HIPAA.",
-            "We will sign Business Associate Agreements (BAAs) with covered entities.",
-            "Protected Health Information (PHI) is safeguarded with encryption, access controls, and audit logs.",
-            "We do not disclose PHI except as permitted by HIPAA."
-          ]
+          "paragraphs": {
+            "p1": "For US dental practices, HelloMolar acts as a Business Associate under HIPAA.",
+            "p2": "We will sign Business Associate Agreements (BAAs) with covered entities.",
+            "p3": "Protected Health Information (PHI) is safeguarded with encryption, access controls, and audit logs.",
+            "p4": "We do not disclose PHI except as permitted by HIPAA."
+          }
         },
         "ccpa": {
           "title": "7. CCPA/CPRA Rights (California Residents)",
           "intro": "If you are a California resident, you have the right to:",
-          "bullets": [
-            "Know what personal data we collect and why",
-            "Request access, correction, or deletion of your data",
-            "Opt-out of data sale (we do not sell personal data)",
-            "Not be discriminated against for exercising your rights"
-          ]
+          "bullets": {
+            "b1": "Know what personal data we collect and why",
+            "b2": "Request access, correction, or deletion of your data",
+            "b3": "Opt-out of data sale (we do not sell personal data)",
+            "b4": "Not be discriminated against for exercising your rights"
+          }
         },
         "dataRetention": {
           "title": "8. Data Retention",
-          "paragraphs": [
-            "We retain personal data for 10 years, unless a longer period is required by law (e.g., medical recordkeeping). After that, data is securely deleted or anonymized."
-          ]
+          "paragraphs": {
+            "p1": "We retain personal data for 10 years, unless a longer period is required by law (e.g., medical recordkeeping). After that, data is securely deleted or anonymized."
+          }
         },
         "dataSharing": {
           "title": "9. Data Sharing and Transfers",
-          "paragraphs": [
-            "We do not sell personal data.",
-            "We may share data with service providers (e.g., hosting, payment processors) under strict agreements.",
-            "We do not transfer personal data outside the EU or US without adequate safeguards."
-          ]
+          "paragraphs": {
+            "p1": "We do not sell personal data.",
+            "p2": "We may share data with service providers (e.g., hosting, payment processors) under strict agreements.",
+            "p3": "We do not transfer personal data outside the EU or US without adequate safeguards."
+          }
         },
         "securityMeasures": {
           "title": "10. Security Measures",
           "intro": "We protect your data using:",
-          "bullets": [
-            "Encryption at rest and in transit",
-            "Role-based access controls",
-            "Audit logging",
-            "Regular security testing"
-          ]
+          "bullets": {
+            "b1": "Encryption at rest and in transit",
+            "b2": "Role-based access controls",
+            "b3": "Audit logging",
+            "b4": "Regular security testing"
+          }
         },
         "yourRights": {
           "title": "11. Your Rights",
           "intro": "Depending on your jurisdiction, you may have the right to:",
-          "bullets": [
-            "Access, correct, or delete your personal data",
-            "Restrict or object to processing",
-            "Data portability",
-            "File a complaint with your supervisory authority (EU residents)",
-            "Request an accounting of disclosures (HIPAA patients)"
-          ],
+          "bullets": {
+            "b1": "Access, correct, or delete your personal data",
+            "b2": "Restrict or object to processing",
+            "b3": "Data portability",
+            "b4": "File a complaint with your supervisory authority (EU residents)",
+            "b5": "Request an accounting of disclosures (HIPAA patients)"
+          },
           "note": "To exercise these rights, contact: privacy@hellomolar.com"
         },
         "cookies": {
           "title": "12. Cookies and Tracking",
-          "paragraphs": ["HelloMolar does not use cookies or third-party trackers."]
+          "paragraphs": {
+            "p1": "HelloMolar does not use cookies or third-party trackers."
+          }
         },
         "childPrivacy": {
           "title": "13. Children’s Privacy",
-          "paragraphs": [
-            "Our services are not directed to children under 16 without parental consent."
-          ]
+          "paragraphs": {
+            "p1": "Our services are not directed to children under 16 without parental consent."
+          }
         },
         "dataBreach": {
           "title": "14. Data Breach Notification",
-          "paragraphs": [
-            "In case of a data breach, we will notify affected users and regulators as required by law (GDPR Articles 33–34, HIPAA Breach Notification Rule)."
-          ]
+          "paragraphs": {
+            "p1": "In case of a data breach, we will notify affected users and regulators as required by law (GDPR Articles 33–34, HIPAA Breach Notification Rule)."
+          }
         },
         "changes": {
           "title": "15. Changes to This Policy",
-          "paragraphs": [
-            "We may update this Privacy Policy. Changes will be communicated via our app or website."
-          ]
+          "paragraphs": {
+            "p1": "We may update this Privacy Policy. Changes will be communicated via our app or website."
+          }
         },
         "contact": {
           "title": "16. Contact Us",
-          "paragraphs": [
-            "For any privacy concerns, please contact:",
-            "Nefar BV – HelloMolar",
-            "Email: privacy@hellomolar.com"
-          ]
+          "paragraphs": {
+            "p1": "For any privacy concerns, please contact:",
+            "p2": "Nefar BV – HelloMolar",
+            "p3": "Email: privacy@hellomolar.com"
+          }
         }
       }
     }
