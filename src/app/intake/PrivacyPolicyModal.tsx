@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 
-import { useLocale, useTranslations } from 'next-intl';
+import { useLocale, useMessages, useTranslations } from 'next-intl';
 
 import Button from '@/ui/Button';
 
@@ -45,6 +45,12 @@ type SectionContent = {
   note?: string;
 };
 
+type SubsectionContent = {
+  title?: string;
+  paragraphs?: Record<string, string>;
+  bullets?: Record<string, string>;
+};
+
 const SECTION_ORDER: SectionKey[] = [
   'whoWeAre',
   'scope',
@@ -71,6 +77,7 @@ const SUBSECTION_ORDER: Partial<Record<SectionKey, readonly string[]>> = {
 export default function PrivacyPolicyModal({ open, onClose }: PrivacyPolicyModalProps) {
   const t = useTranslations('intake');
   const locale = useLocale();
+  const messages = useMessages();
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -111,8 +118,21 @@ export default function PrivacyPolicyModal({ open, onClose }: PrivacyPolicyModal
   }, [locale]);
 
   const toList = (map?: Record<string, string>) => (map ? Object.values(map) : []);
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null;
+
+  const sectionMessages = useMemo(() => {
+    if (!isRecord(messages)) return null;
+    const intake = messages.intake;
+    if (!isRecord(intake)) return null;
+    const privacyModal = intake.privacyModal;
+    if (!isRecord(privacyModal)) return null;
+    const sections = privacyModal.sections;
+    return isRecord(sections) ? (sections as Record<string, unknown>) : null;
+  }, [messages]);
 
   if (!open) return null;
+  if (!sectionMessages) return null;
 
   return (
     <div
@@ -150,9 +170,9 @@ export default function PrivacyPolicyModal({ open, onClose }: PrivacyPolicyModal
         <div className="max-h-[70vh] overflow-y-auto p-6 text-sm text-slate-700">
           <ol className="space-y-6">
             {sectionKeys.map((key) => {
-              const section = t(`privacyModal.sections.${key}`, {
-                returnObjects: true,
-              }) as SectionContent;
+              const rawSection = sectionMessages[key];
+              if (!isRecord(rawSection)) return null;
+              const section = rawSection as SectionContent;
               const subsections = section.subsections ?? {};
               const subsectionKeys = SUBSECTION_ORDER[key] || Object.keys(subsections);
               const paragraphs = toList(section.paragraphs);
@@ -177,8 +197,9 @@ export default function PrivacyPolicyModal({ open, onClose }: PrivacyPolicyModal
                   {subsectionKeys.length > 0 ? (
                     <div className="space-y-3">
                       {subsectionKeys.map((subKey) => {
-                        const subsection = subsections[subKey];
-                        if (!subsection) return null;
+                        const rawSubsection = subsections[subKey] as unknown;
+                        if (!isRecord(rawSubsection)) return null;
+                        const subsection = rawSubsection as SubsectionContent;
                         const subParagraphs = toList(subsection.paragraphs);
                         const subBullets = toList(subsection.bullets);
                         return (
