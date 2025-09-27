@@ -20,6 +20,15 @@ Diagnostics
 
 - `GET /api/ping`: Returns `{ ok: true, env }` for quick checks.
 
+Admin Appointment Requests (module `apprequest`)
+
+- `POST /admin/appointments/new/create`: Log an appointment request (existing or new patient). Requires admin session + CSRF. Body comes from HTML form; server validates with `appointmentRequestCreateSchema`.
+- `POST /admin/appointments/new/create`: Log an appointment request (existing or new patient). Requires admin session + CSRF. Body comes from HTML form; server validates with `appointmentRequestCreateSchema`. The payload now includes `preferredLocale` (`en`|`nl`|`es`|`pap`) which is persisted on both the request and the patient record.
+- `POST /admin/appointments/:id/update`: Update status, schedule, availability, notes, preferred providers, and `preferredLocale`. Recomputes priority, syncs the parent `PatientEvent`, and updates the linked patient when the language changes.
+- `POST /admin/appointments/:id/follow-up`: Append a follow-up attempt, optionally creating a contact event and adjusting priority when an offer is declined.
+- `POST /admin/appointments/:id/prefill-link`: Generates a 24-hour intake link token and redirects back with shareable URL/template for email/WhatsApp. The link path and template text are localized using the appointment's `preferredLocale`.
+- UI list/detail pages live under `/admin/appointments` and `/admin/appointments/:id`; they surface urgent counts, triage scores, and the unified patient timeline.
+
 Intake Request Schema (summary)
 
 - Identity: `firstName`, `lastName`, `dateOfBirth` (ISO), `email?`, `phone1?`.
@@ -64,3 +73,4 @@ Outbox Events
 
 - On success, emits an `OutboxEvent` with topic `intake.submitted`.
 - Consumers can read and process events asynchronously without coupling to the API path.
+- Appointment workflows emit `appointment.requested`, `appointment.updated`, and `appointment.followup` payloads for downstream automation (notifications, BI, etc.).

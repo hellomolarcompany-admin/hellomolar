@@ -1,9 +1,8 @@
-import type { AbstractIntlMessages } from 'next-intl';
-import { NextIntlClientProvider } from 'next-intl';
 import { notFound } from 'next/navigation';
+import { type AbstractIntlMessages, NextIntlClientProvider } from 'next-intl';
 
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { type Locale, isLocale } from '@/i18n/config';
+import { isLocale, type Locale } from '@/i18n/config';
 import HeaderImage from '@/ui/HeaderImage';
 
 export const metadata = {

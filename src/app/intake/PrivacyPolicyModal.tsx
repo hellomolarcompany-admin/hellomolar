@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
-
 import { useLocale, useMessages, useTranslations } from 'next-intl';
+import { useEffect, useMemo, useRef } from 'react';
 
 import Button from '@/ui/Button';
 

@@ -1,6 +1,5 @@
-import { NextResponse } from 'next/server';
-
 import type { Prisma } from '@prisma/client';
+import { NextResponse } from 'next/server';
 
 import { getSession, verifyCsrfForRequest } from '@/lib/auth';
 import { getTenantClient } from '@/lib/tenant';

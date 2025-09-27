@@ -15,6 +15,9 @@ Migrations
 - Dev: `pnpm prisma migrate dev` to create migrations.
 - Prod: `pnpm prisma migrate deploy` to apply existing migrations.
 - Multi‑tenant: apply tenant schema to each tenant DB; control‑plane schema to `CONTROL_DATABASE_URL`.
+- Latest tenant migration: `20250921120000_appointment_request_module` introduces patient timeline tables (`PatientEvent`, `AppointmentRequest*`, `StaffMember`). Run on every tenant database before enabling the module.
+- Enable the admin module by adding `apprequest` to `MODULES` once migrations are applied and staff records are provisioned.
+- New migration `20250921151500_add_preferred_locale` adds the `LocaleCode` enum plus `preferredLocale` columns on `Patient` and `AppointmentRequest`. Apply after the earlier appointment module migration so language preferences are stored.
 
 Rate Limiting
 
