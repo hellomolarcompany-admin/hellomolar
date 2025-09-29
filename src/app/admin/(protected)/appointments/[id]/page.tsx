@@ -1,10 +1,11 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+
 import {
   AppointmentContactChannel,
   AppointmentFollowUpOutcome,
   AppointmentRequestStatus,
 } from '@prisma/client';
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
 
 import CsrfField from '@/components/CsrfField';
 import { locales } from '@/i18n/config';
@@ -153,6 +154,8 @@ export default async function Page(props: {
     value: code,
     label: localeLabels[code] || code.toUpperCase(),
   }));
+  const isReadOnly = request.status === 'SCHEDULED' || request.status === 'CANCELLED';
+  const readOnlyLabel = request.status.toLowerCase();
 
   return (
     <main className="mx-auto max-w-5xl p-4 space-y-8">
@@ -214,8 +217,9 @@ export default async function Page(props: {
             )}
           </div>
           <div className="mt-2 text-xs text-gray-500">
-            Base priority {request.isEmergency ? Math.max(2, request.basePriority) : request.basePriority} − penalties{' '}
-            {request.declinePenalty} + triage {request.triageScore}
+            Base priority{' '}
+            {request.isEmergency ? Math.max(2, request.basePriority) : request.basePriority} −
+            penalties {request.declinePenalty} + triage {request.triageScore}
           </div>
         </div>
       </section>
@@ -329,245 +333,263 @@ export default async function Page(props: {
         </section>
       )}
 
-      <section className="rounded border border-gray-200 p-4">
+      {isReadOnly && (
+        <section className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+          This request is {readOnlyLabel}. All editing actions are disabled.
+        </section>
+      )}
+
+      <section className={`rounded border border-gray-200 p-4 ${isReadOnly ? 'opacity-60' : ''}`}>
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-600">
           Update request
         </h2>
-        <form
-          method="POST"
-          action={`/admin/appointments/${request.id}/update`}
-          className="grid gap-4 md:grid-cols-2"
-        >
+        <form method="POST" action={`/admin/appointments/${request.id}/update`}>
           <CsrfField />
-          <div>
-            <label
-              className="mb-1 block text-xs font-medium uppercase tracking-wide"
-              htmlFor="status"
-            >
-              Status
-            </label>
-            <select
-              id="status"
-              name="status"
-              defaultValue={request.status}
-              className="w-full rounded border border-gray-300 p-2 text-sm"
-            >
-              <option value="UNSCHEDULED">Unscheduled</option>
-              <option value="SCHEDULED">Scheduled</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
-          </div>
-          <div>
-            <label
-              className="mb-1 block text-xs font-medium uppercase tracking-wide"
-              htmlFor="planned_duration"
-            >
-              Planned duration (minutes)
-            </label>
-            <input
-              id="planned_duration"
-              name="planned_duration"
-              type="number"
-              min={5}
-              defaultValue={request.plannedDurationMinutes}
-              className="w-full rounded border border-gray-300 p-2 text-sm"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label
-              className="mb-1 block text-xs font-medium uppercase tracking-wide"
-              htmlFor="preferred_provider_ids"
-            >
-              Preferred providers
-            </label>
-            <select
-              id="preferred_provider_ids"
-              name="preferred_provider_ids"
-              multiple
-              defaultValue={request.preferredProviderIds}
-              className="h-32 w-full rounded border border-gray-300 p-2 text-sm"
-            >
-              {staffMembers.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.firstName} {member.lastName} •{' '}
-                  {member.role.toLowerCase().replace(/_/g, ' ')}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label
-              className="mb-1 block text-xs font-medium uppercase tracking-wide"
-              htmlFor="preferred_locale"
-            >
-              Preferred language
-            </label>
-            <select
-              id="preferred_locale"
-              name="preferred_locale"
-              defaultValue={request.preferredLocale}
-              className="w-full rounded border border-gray-300 p-2 text-sm"
-            >
-              {localeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label
-              className="mb-1 block text-xs font-medium uppercase tracking-wide"
-              htmlFor="notes"
-            >
-              Notes
-            </label>
-            <textarea
-              id="notes"
-              name="notes"
-              rows={4}
-              defaultValue={request.notes ?? ''}
-              className="w-full rounded border border-gray-300 p-2 text-sm"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-xs font-medium uppercase tracking-wide">
-              Availability
-            </label>
-            <div className="overflow-x-auto">
-              <table className="min-w-full border text-xs">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="border px-2 py-1 text-left">Day</th>
-                    {Object.entries(TIMESLOT_LABELS).map(([slotId, label]) => (
-                      <th key={slotId} className="border px-2 py-1 text-center">
-                        {label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(WEEKDAY_LABELS).map(([dayId, dayLabel]) => (
-                    <tr key={dayId}>
-                      <td className="border px-2 py-1 font-medium">{dayLabel}</td>
-                      {Object.keys(TIMESLOT_LABELS).map((slotId) => (
-                        <td key={slotId} className="border px-2 py-1 text-center">
-                          <input
-                            type="checkbox"
-                            name={`availability_${dayId}`}
-                            value={slotId}
-                            defaultChecked={availability[dayId]?.includes(slotId)}
-                          />
-                        </td>
+          <fieldset
+            disabled={isReadOnly}
+            className={`grid gap-4 md:grid-cols-2 ${isReadOnly ? 'cursor-not-allowed' : ''}`}
+          >
+            <div>
+              <label
+                className="mb-1 block text-xs font-medium uppercase tracking-wide"
+                htmlFor="status"
+              >
+                Status
+              </label>
+              <select
+                id="status"
+                name="status"
+                defaultValue={request.status}
+                className="w-full rounded border border-gray-300 p-2 text-sm"
+              >
+                <option value="UNSCHEDULED">Unscheduled</option>
+                <option value="SCHEDULED">Scheduled</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label
+                className="mb-1 block text-xs font-medium uppercase tracking-wide"
+                htmlFor="planned_duration"
+              >
+                Planned duration (minutes)
+              </label>
+              <input
+                id="planned_duration"
+                name="planned_duration"
+                type="number"
+                min={5}
+                defaultValue={request.plannedDurationMinutes}
+                className="w-full rounded border border-gray-300 p-2 text-sm"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label
+                className="mb-1 block text-xs font-medium uppercase tracking-wide"
+                htmlFor="preferred_provider_ids"
+              >
+                Preferred providers
+              </label>
+              <select
+                id="preferred_provider_ids"
+                name="preferred_provider_ids"
+                multiple
+                defaultValue={request.preferredProviderIds}
+                className="h-32 w-full rounded border border-gray-300 p-2 text-sm"
+              >
+                {staffMembers.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.firstName} {member.lastName} •{' '}
+                    {member.role.toLowerCase().replace(/_/g, ' ')}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                className="mb-1 block text-xs font-medium uppercase tracking-wide"
+                htmlFor="preferred_locale"
+              >
+                Preferred language
+              </label>
+              <select
+                id="preferred_locale"
+                name="preferred_locale"
+                defaultValue={request.preferredLocale}
+                className="w-full rounded border border-gray-300 p-2 text-sm"
+              >
+                {localeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label
+                className="mb-1 block text-xs font-medium uppercase tracking-wide"
+                htmlFor="notes"
+              >
+                Notes
+              </label>
+              <textarea
+                id="notes"
+                name="notes"
+                rows={4}
+                defaultValue={request.notes ?? ''}
+                className="w-full rounded border border-gray-300 p-2 text-sm"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-xs font-medium uppercase tracking-wide">
+                Availability
+              </label>
+              <div className="overflow-x-auto">
+                <table className="min-w-full border text-xs">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="border px-2 py-1 text-left">Day</th>
+                      {Object.entries(TIMESLOT_LABELS).map(([slotId, label]) => (
+                        <th key={slotId} className="border px-2 py-1 text-center">
+                          {label}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {Object.entries(WEEKDAY_LABELS).map(([dayId, dayLabel]) => (
+                      <tr key={dayId}>
+                        <td className="border px-2 py-1 font-medium">{dayLabel}</td>
+                        {Object.keys(TIMESLOT_LABELS).map((slotId) => (
+                          <td key={slotId} className="border px-2 py-1 text-center">
+                            <input
+                              type="checkbox"
+                              name={`availability_${dayId}`}
+                              value={slotId}
+                              defaultChecked={availability[dayId]?.includes(slotId)}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-          <div className="md:col-span-2 flex items-center justify-end gap-3">
-            <button
-              type="submit"
-              className="rounded bg-black px-4 py-2 text-sm font-medium text-white"
-            >
-              Save changes
-            </button>
-          </div>
+            <div className="md:col-span-2 flex items-center justify-end gap-3">
+              <button
+                type="submit"
+                disabled={isReadOnly}
+                className={`rounded px-4 py-2 text-sm font-medium ${
+                  isReadOnly
+                    ? 'bg-gray-300 text-gray-600'
+                    : 'bg-black text-white hover:bg-gray-900 transition-colors'
+                }`}
+              >
+                Save changes
+              </button>
+            </div>
+          </fieldset>
         </form>
       </section>
 
-      <section className="rounded border border-gray-200 p-4">
+      <section className={`rounded border border-gray-200 p-4 ${isReadOnly ? 'opacity-60' : ''}`}>
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-600">
           Log follow-up
         </h2>
-        <form
-          method="POST"
-          action={`/admin/appointments/${request.id}/follow-up`}
-          className="grid gap-4 md:grid-cols-2"
-        >
+        <form method="POST" action={`/admin/appointments/${request.id}/follow-up`}>
           <CsrfField />
-          <div>
-            <label
-              className="mb-1 block text-xs font-medium uppercase tracking-wide"
-              htmlFor="follow_channel"
-            >
-              Channel
-            </label>
-            <select
-              id="follow_channel"
-              name="channel"
-              className="w-full rounded border border-gray-300 p-2 text-sm"
-              defaultValue={AppointmentContactChannel.PHONE}
-            >
-              {CONTACT_CHANNEL_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label
-              className="mb-1 block text-xs font-medium uppercase tracking-wide"
-              htmlFor="follow_outcome"
-            >
-              Outcome
-            </label>
-            <select
-              id="follow_outcome"
-              name="outcome"
-              className="w-full rounded border border-gray-300 p-2 text-sm"
-              defaultValue={AppointmentFollowUpOutcome.WHATSAPP_SENT}
-            >
-              {FOLLOW_UP_OUTCOME_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label
-              className="mb-1 block text-xs font-medium uppercase tracking-wide"
-              htmlFor="follow_time"
-            >
-              Contact time
-            </label>
-            <input
-              id="follow_time"
-              name="occurred_at"
-              type="datetime-local"
-              className="w-full rounded border border-gray-300 p-2 text-sm"
-              defaultValue={new Date().toISOString().slice(0, 16)}
-            />
-          </div>
-          <div>
-            <label
-              className="mb-1 block text-xs font-medium uppercase tracking-wide"
-              htmlFor="follow_notes"
-            >
-              Notes
-            </label>
-            <textarea
-              id="follow_notes"
-              name="notes"
-              rows={3}
-              className="w-full rounded border border-gray-300 p-2 text-sm"
-            />
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <input id="record_event" name="record_event" type="checkbox" defaultChecked />
-            <label htmlFor="record_event">Add to patient timeline</label>
-          </div>
-          <div className="md:col-span-2 flex items-center justify-end">
-            <button
-              type="submit"
-              className="rounded bg-black px-4 py-2 text-sm font-medium text-white"
-            >
-              Log follow-up
-            </button>
-          </div>
+          <fieldset
+            disabled={isReadOnly}
+            className={`grid gap-4 md:grid-cols-2 ${isReadOnly ? 'cursor-not-allowed' : ''}`}
+          >
+            <div>
+              <label
+                className="mb-1 block text-xs font-medium uppercase tracking-wide"
+                htmlFor="follow_channel"
+              >
+                Channel
+              </label>
+              <select
+                id="follow_channel"
+                name="channel"
+                className="w-full rounded border border-gray-300 p-2 text-sm"
+                defaultValue={AppointmentContactChannel.PHONE}
+              >
+                {CONTACT_CHANNEL_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                className="mb-1 block text-xs font-medium uppercase tracking-wide"
+                htmlFor="follow_outcome"
+              >
+                Outcome
+              </label>
+              <select
+                id="follow_outcome"
+                name="outcome"
+                className="w-full rounded border border-gray-300 p-2 text-sm"
+                defaultValue={AppointmentFollowUpOutcome.WHATSAPP_SENT}
+              >
+                {FOLLOW_UP_OUTCOME_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                className="mb-1 block text-xs font-medium uppercase tracking-wide"
+                htmlFor="follow_time"
+              >
+                Contact time
+              </label>
+              <input
+                id="follow_time"
+                name="occurred_at"
+                type="datetime-local"
+                className="w-full rounded border border-gray-300 p-2 text-sm"
+                defaultValue={new Date().toISOString().slice(0, 16)}
+              />
+            </div>
+            <div>
+              <label
+                className="mb-1 block text-xs font-medium uppercase tracking-wide"
+                htmlFor="follow_notes"
+              >
+                Notes
+              </label>
+              <textarea
+                id="follow_notes"
+                name="notes"
+                rows={3}
+                className="w-full rounded border border-gray-300 p-2 text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <input id="record_event" name="record_event" type="checkbox" defaultChecked />
+              <label htmlFor="record_event">Add to patient timeline</label>
+            </div>
+            <div className="md:col-span-2 flex items-center justify-end">
+              <button
+                type="submit"
+                disabled={isReadOnly}
+                className={`rounded px-4 py-2 text-sm font-medium ${
+                  isReadOnly
+                    ? 'bg-gray-300 text-gray-600'
+                    : 'bg-black text-white hover:bg-gray-900 transition-colors'
+                }`}
+              >
+                Log follow-up
+              </button>
+            </div>
+          </fieldset>
         </form>
 
         <div className="mt-6">
@@ -604,7 +626,7 @@ export default async function Page(props: {
         </div>
       </section>
 
-      <section className="rounded border border-gray-200 p-4">
+      <section className={`rounded border border-gray-200 p-4 ${isReadOnly ? 'opacity-60' : ''}`}>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-600">
           Request intake link
         </h2>
@@ -615,12 +637,18 @@ export default async function Page(props: {
         <form
           method="POST"
           action={`/admin/appointments/${request.id}/prefill-link`}
-          className="flex items-center gap-3"
+          className={`flex items-center gap-3 ${isReadOnly ? 'cursor-not-allowed opacity-80' : ''}`}
+          aria-disabled={isReadOnly}
         >
           <CsrfField />
           <button
             type="submit"
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white"
+            disabled={isReadOnly}
+            className={`rounded px-4 py-2 text-sm font-medium ${
+              isReadOnly
+                ? 'bg-gray-300 text-gray-600'
+                : 'bg-blue-600 text-white hover:bg-blue-700 transition-colors'
+            }`}
           >
             Generate link
           </button>
