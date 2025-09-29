@@ -8,6 +8,61 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum LocaleCode {
+  nl
+  en
+  es
+  pap
+}
+
+enum PatientEventType {
+  APPOINTMENT_REQUEST
+  CONTACT
+  NOTE
+}
+
+enum PatientEventStatus {
+  OPEN
+  RESOLVED
+}
+
+enum AppointmentRequestStatus {
+  UNSCHEDULED
+  SCHEDULED
+  CANCELLED
+}
+
+enum AppointmentReason {
+  CHECKUP
+  CLEANING
+  FILLING
+  EXTRACTION
+  ROOT_CANAL
+  EMERGENCY
+}
+
+enum AppointmentContactChannel {
+  PHONE
+  MAIL
+  WHATSAPP
+  FRONT_DESK
+}
+
+enum AppointmentFollowUpOutcome {
+  WHATSAPP_SENT
+  CALLED_NO_ANSWER
+  CALLED_APPOINTMENT_MADE
+  WHATSAPP_CONFIRMED
+  DECLINED_OFFER
+}
+
+enum StaffRole {
+  DENTIST
+  HYGIENIST
+  SUPPORT
+  DENTAL_ASSISTANT
+}
+
 /// Stores a single submitted intake form and associated metadata.
 model IntakeSubmission {
   id        String   @id @default(uuid())
@@ -93,12 +148,136 @@ model Patient {
   dob       DateTime?
   email     String?
   phone     String?
+  preferredLocale LocaleCode?
 
   intakeSubmissions IntakeSubmission[]
+  events            PatientEvent[]
+  appointmentRequests AppointmentRequest[]
 
   @@index([lastName, firstName])
   @@index([email])
   @@index([phone])
+}
+
+model PatientEvent {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  patientId String
+  occurredAt DateTime
+  type      PatientEventType
+  status    PatientEventStatus @default(OPEN)
+  summary   String?
+  payload   Json?
+  createdBy StaffMember? @relation("StaffCreatedEvents", fields: [createdByStaffId], references: [id])
+  createdByStaffId String?
+
+  appointmentRequest AppointmentRequest? @relation("AppointmentRequestEvent")
+  followUps         AppointmentRequestFollowUp[] @relation("FollowUpEvent")
+  staffInvolvements StaffEventInvolvement[]
+
+  @@index([patientId, occurredAt])
+  @@index([type, occurredAt])
+}
+
+model AppointmentRequest {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event   PatientEvent @relation("AppointmentRequestEvent", fields: [eventId], references: [id])
+  eventId String       @unique
+
+  patient   Patient @relation(fields: [patientId], references: [id])
+  patientId String
+
+  status             AppointmentRequestStatus @default(UNSCHEDULED)
+  reasons            AppointmentReason[]
+  plannedDurationMinutes Int @default(30)
+  isEmergency        Boolean @default(false)
+  basePriority       Int     @default(0)
+  triageScore        Int     @default(0)
+  declinePenalty     Int     @default(0)
+  effectivePriority  Int     @default(0)
+  triageInputs       Json?
+  preferredProviderIds String[] @default([])
+  availabilityMatrix Json?
+  notes              String?
+  lastContactAt      DateTime?
+  nextActionAt       DateTime?
+  scheduledStart     DateTime?
+  scheduledEnd       DateTime?
+  preferredLocale    LocaleCode @default(en)
+
+  createdBy       StaffMember? @relation("StaffCreatedAppointments", fields: [createdByStaffId], references: [id])
+  createdByStaffId String?
+
+  followUps AppointmentRequestFollowUp[]
+
+  @@index([patientId, status])
+  @@index([status, effectivePriority])
+  @@index([isEmergency, effectivePriority])
+  @@index([nextActionAt])
+}
+
+model AppointmentRequestFollowUp {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  request   AppointmentRequest @relation(fields: [requestId], references: [id])
+  requestId String
+  event     PatientEvent?       @relation("FollowUpEvent", fields: [eventId], references: [id])
+  eventId   String?
+
+  occurredAt DateTime
+  channel    AppointmentContactChannel
+  outcome    AppointmentFollowUpOutcome
+  notes      String?
+  affectsPriority Boolean @default(false)
+  priorityDelta   Int     @default(0)
+
+  staff   StaffMember? @relation("StaffFollowUps", fields: [staffId], references: [id])
+  staffId String?
+
+  @@index([requestId, occurredAt])
+}
+
+model StaffMember {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  firstName   String
+  lastName    String
+  phone       String?
+  email       String?
+  address     String?
+  bankAccount String?
+  role        StaffRole
+  active      Boolean @default(true)
+
+  createdEvents   PatientEvent[]            @relation("StaffCreatedEvents")
+  appointmentRequestsCreated AppointmentRequest[] @relation("StaffCreatedAppointments")
+  followUps AppointmentRequestFollowUp[]    @relation("StaffFollowUps")
+  involvements StaffEventInvolvement[]
+}
+
+model StaffEventInvolvement {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  event   PatientEvent @relation(fields: [eventId], references: [id])
+  eventId String
+
+  staff   StaffMember @relation(fields: [staffId], references: [id])
+  staffId String
+
+  role StaffRole
+
+  @@index([eventId])
+  @@index([staffId, createdAt])
 }
 
 model OutboxEvent {

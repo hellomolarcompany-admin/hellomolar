@@ -9,7 +9,9 @@ Core
 - `SESSION_SECRET`: 32+ character secret to sign admin sessions (HMAC‑SHA256). Required.
 - `INTAKE_ENC_KEY`: Base64‑encoded 32‑byte key used to encrypt the raw intake JSON payload (AES‑256‑GCM). Required in single‑tenant mode and as fallback in multi‑tenant.
 - `INTAKE_FALLBACK_KEYS`: Optional comma‑separated list of legacy base64 keys for decrypting historical records.
-- `MODULES`: Comma‑separated list of enabled modules (e.g., `intake`). Defaults to all enabled.
+- `MODULES`: Comma‑separated list of enabled modules (e.g., `intake,apprequest`). Defaults to all enabled.
+  - `intake`: public intake form and admin intake explorer.
+  - `apprequest`: appointment-request backlog, triage scoring, follow-up logging, and intake-prefill tooling (admin only).
 
 Multi‑tenant / Integrations
 

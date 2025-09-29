@@ -1,8 +1,8 @@
-import type { Viewport } from 'next';
-import { getLocale } from 'next-intl/server';
-import { Dancing_Script, Montserrat } from 'next/font/google';
-
 import './globals.css';
+
+import type { Viewport } from 'next';
+import { Dancing_Script, Montserrat } from 'next/font/google';
+import { getLocale } from 'next-intl/server';
 
 export const metadata = {
   title: 'HelloMolar',

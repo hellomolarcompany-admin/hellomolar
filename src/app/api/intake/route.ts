@@ -1,8 +1,8 @@
+import type { Prisma } from '@prisma/client';
 import { NextResponse } from 'next/server';
 
-import type { Prisma } from '@prisma/client';
-
 import { isLocale } from '@/i18n/config';
+import { verifyPrefillToken } from '@/lib/appointments/prefill';
 import { encryptJsonToBuffer } from '@/lib/crypto';
 import { verifyHCaptcha } from '@/lib/hcaptcha';
 import { modules } from '@/lib/modules';
@@ -142,6 +142,23 @@ export async function POST(req: Request) {
 
     const prisma = tenantCtx?.prisma || defaultPrisma;
 
+    let linkedPatientId: string | null = null;
+    const prefillTokenRaw = typeof json?.prefillToken === 'string' ? json.prefillToken : '';
+    if (prefillTokenRaw) {
+      try {
+        const decoded = decodeURIComponent(prefillTokenRaw);
+        const payload = verifyPrefillToken(decoded);
+        if (payload && payload.tid === tenantId) {
+          const patient = await prisma.patient.findUnique({ where: { id: payload.pid } });
+          if (patient) {
+            linkedPatientId = patient.id;
+          }
+        }
+      } catch {
+        // ignore invalid prefill tokens
+      }
+    }
+
     // Spam scoring
     let spamScore = 0;
     if (!captchaOk) spamScore += 3;
@@ -173,6 +190,7 @@ export async function POST(req: Request) {
         encKeyId,
         encAlg,
         isSpam,
+        patientId: linkedPatientId ?? undefined,
       },
       select: { id: true, createdAt: true },
     });

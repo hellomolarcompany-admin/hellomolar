@@ -1,6 +1,8 @@
 import { cookies } from 'next/headers';
+import Link from 'next/link';
 
 import { verifySession } from '@/lib/auth';
+import { modules } from '@/lib/modules';
 import { resolveTenant } from '@/lib/tenant';
 import HeaderImage from '@/ui/HeaderImage';
 
@@ -37,8 +39,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
       {/* Admin navigation bar */}
       <header className="border-b bg-gray-50">
-        <div className="mx-auto flex max-w-6xl items-center justify-between p-3 text-sm">
-          <div className="font-medium">Admin</div>
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <nav className="flex flex-wrap items-center gap-3 text-sm">
+            <span className="font-medium text-gray-600">Admin</span>
+            <Link className="rounded px-2 py-1 hover:bg-gray-200" href="/admin/intake">
+              Intake
+            </Link>
+            {modules.apprequest && (
+              <Link className="rounded px-2 py-1 hover:bg-gray-200" href="/admin/appointments">
+                Appointment requests
+              </Link>
+            )}
+          </nav>
           <form method="POST" action="/admin/logout">
             <input type="hidden" name="csrf" defaultValue={csrfCookie} />
             <button className="rounded border px-3 py-1" type="submit">
