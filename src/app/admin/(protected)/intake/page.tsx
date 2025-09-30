@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { getTenantClient } from '@/lib/tenant';
+import { cn } from '@/ui/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,28 @@ function ageFromDob(dob: Date | null): number | null {
   const m = now.getMonth() - dob.getMonth();
   if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
   return age;
+}
+
+function formatResidentType(value: string | null): string {
+  if (!value) return '—';
+  return value
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function badgeClasses(variant: 'neutral' | 'positive' | 'warning'): string {
+  const base =
+    'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset';
+  switch (variant) {
+    case 'positive':
+      return cn(base, 'bg-emerald-50 text-emerald-700 ring-emerald-100');
+    case 'warning':
+      return cn(base, 'bg-amber-50 text-amber-700 ring-amber-100');
+    default:
+      return cn(base, 'bg-slate-100 text-slate-700 ring-slate-200');
+  }
 }
 
 export default async function Page(props: {
@@ -95,68 +118,110 @@ export default async function Page(props: {
         </Link>
       </div>
 
-      <form className="mb-4 flex items-center gap-2">
-        <input
-          type="text"
-          name="q"
-          defaultValue={q}
-          placeholder="Search name, email or phone"
-          className="w-full max-w-md rounded-md border p-2 text-sm"
-        />
-        <button type="submit" className="rounded-md bg-black px-3 py-2 text-sm text-white">
-          Search
-        </button>
+      <form className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex w-full flex-1 items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 shadow-sm backdrop-blur focus-within:border-slate-300 focus-within:ring-2 focus-within:ring-slate-400/40">
+          <input
+            type="text"
+            name="q"
+            defaultValue={q}
+            placeholder="Search name, email or phone"
+            aria-label="Search intake submissions"
+            className="flex-1 border-none bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+          />
+          <button
+            type="submit"
+            className="inline-flex items-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+          >
+            Search
+          </button>
+        </div>
       </form>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full border text-sm">
-          <thead className="bg-gray-50">
-            <tr className="text-left">
-              <th className="border px-3 py-2">Date</th>
-              <th className="border px-3 py-2">Name</th>
-              <th className="border px-3 py-2">Age</th>
-              <th className="border px-3 py-2">Type</th>
-              <th className="border px-3 py-2">Country</th>
-              <th className="border px-3 py-2">Email</th>
-              <th className="border px-3 py-2">Phone</th>
-              <th className="border px-3 py-2">Complications</th>
-              <th className="border px-3 py-2">Privacy OK</th>
-              <th className="border px-3 py-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows
-              .filter((r) => !r.isSpam)
-              .map((r) => (
-                <tr key={r.id} className="odd:bg-white even:bg-gray-50">
-                  <td className="border px-3 py-2">{new Date(r.createdAt).toLocaleString()}</td>
-                  <td className="border px-3 py-2">{r.fullName}</td>
-                  <td className="border px-3 py-2">{ageFromDob(r.dob) ?? '—'}</td>
-                  <td className="border px-3 py-2">{r.residentType}</td>
-                  <td className="border px-3 py-2">{r.country ?? '—'}</td>
-                  <td className="border px-3 py-2">{maskEmail(r.email) ?? '—'}</td>
-                  <td className="border px-3 py-2">{maskPhone(r.phone) ?? '—'}</td>
-                  <td className="border px-3 py-2">{r.hadComplications ? 'Yes' : 'No'}</td>
-                  <td className="border px-3 py-2">{r.privacyAccepted ? 'Yes' : 'No'}</td>
-                  <td className="border px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <Link className="text-blue-600 underline" href={`/admin/intake/${r.id}`}>
-                        View
-                      </Link>
-                      <button
-                        type="button"
-                        className="cursor-not-allowed text-gray-400"
-                        title="Delete (coming soon)"
-                        disabled
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="max-h-[70vh] overflow-auto">
+          <table className="min-w-full text-sm">
+            <thead className="sticky top-0 z-10 bg-slate-900 text-[11px] font-semibold uppercase tracking-wider text-white">
+              <tr>
+                <th className="px-4 py-3 text-left">Date</th>
+                <th className="px-4 py-3 text-left">Name</th>
+                <th className="px-4 py-3 text-center">Age</th>
+                <th className="px-4 py-3 text-left">Type</th>
+                <th className="px-4 py-3 text-left">Country</th>
+                <th className="px-4 py-3 text-left">Email</th>
+                <th className="px-4 py-3 text-left">Phone</th>
+                <th className="px-4 py-3 text-left">Complications</th>
+                <th className="px-4 py-3 text-left">Privacy OK</th>
+                <th className="px-4 py-3 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows
+                .filter((r) => !r.isSpam)
+                .map((r) => (
+                  <tr key={r.id} className="bg-white transition hover:bg-slate-50/80">
+                    <td className="px-4 py-3 align-top text-slate-600">
+                      <div className="font-medium text-slate-800">
+                        {new Date(r.createdAt).toLocaleDateString()}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {new Date(r.createdAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top text-slate-800">
+                      <div className="text-base font-semibold">{r.fullName}</div>
+                      <div className="text-xs text-slate-500">{maskEmail(r.email) ?? '—'}</div>
+                    </td>
+                    <td className="px-4 py-3 text-center text-slate-700">
+                      {ageFromDob(r.dob) ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 align-top text-slate-700">
+                      <span className={badgeClasses('neutral')}>
+                        {formatResidentType(r.residentType)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 align-top text-slate-700">{r.country ?? '—'}</td>
+                    <td className="px-4 py-3 align-top text-slate-700">
+                      <span className="font-medium">{maskEmail(r.email) ?? '—'}</span>
+                    </td>
+                    <td className="px-4 py-3 align-top text-slate-700">
+                      {maskPhone(r.phone) ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <span className={badgeClasses(r.hadComplications ? 'warning' : 'positive')}>
+                        {r.hadComplications ? 'Needs review' : 'No issues'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <span className={badgeClasses(r.privacyAccepted ? 'positive' : 'warning')}>
+                        {r.privacyAccepted ? 'Accepted' : 'Missing'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                          className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+                          href={`/admin/intake/${r.id}`}
+                        >
+                          View
+                        </Link>
+                        <button
+                          type="button"
+                          className="inline-flex cursor-not-allowed items-center rounded-full border border-transparent px-3 py-1.5 text-xs font-semibold text-slate-400"
+                          title="Delete (coming soon)"
+                          disabled
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="mt-4 flex items-center justify-between text-sm">

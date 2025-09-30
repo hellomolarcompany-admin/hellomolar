@@ -1,6 +1,7 @@
-import { AppointmentRequestStatus, Prisma } from '@prisma/client';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+
+import { AppointmentRequestStatus, Prisma } from '@prisma/client';
 
 import { locales } from '@/i18n/config';
 import {
@@ -11,6 +12,7 @@ import {
 } from '@/lib/appointments/scheduling';
 import { modules } from '@/lib/modules';
 import { getTenantClient } from '@/lib/tenant';
+import { cn } from '@/ui/utils';
 
 import FindAppointmentModal from './components/FindAppointmentModal';
 
@@ -28,12 +30,10 @@ function formatDate(value: Date | null | undefined): string {
   }
 }
 
-function formatReasons(reasons: string[]): string {
-  if (!reasons.length) return '—';
+function formatReasons(reasons: string[]): string[] {
   return reasons
     .map((reason) => reason.replace(/_/g, ' ').toLowerCase())
-    .map((label) => label.replace(/(^|\s)\w/g, (m) => m.toUpperCase()))
-    .join(', ');
+    .map((label) => label.replace(/(^|\s)\w/g, (m) => m.toUpperCase()));
 }
 
 function statusLabel(status: AppointmentRequestStatus): string {
@@ -45,6 +45,19 @@ function statusLabel(status: AppointmentRequestStatus): string {
     default:
       return 'Unscheduled';
   }
+}
+
+function badgeClasses(
+  variant: 'neutral' | 'positive' | 'warning' | 'danger',
+  opts?: { subtle?: boolean },
+): string {
+  const base =
+    'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset';
+  if (variant === 'positive') return cn(base, 'bg-emerald-50 text-emerald-700 ring-emerald-100');
+  if (variant === 'warning') return cn(base, 'bg-amber-50 text-amber-700 ring-amber-100');
+  if (variant === 'danger')
+    return cn(base, 'bg-rose-50 text-rose-700 ring-rose-100', opts?.subtle && 'bg-rose-100/60');
+  return cn(base, 'bg-slate-100 text-slate-700 ring-slate-200');
 }
 
 export default async function Page(props: {
@@ -69,13 +82,13 @@ export default async function Page(props: {
   const page = Math.max(1, Number(sp.page ?? '1') || 1);
   const skip = (page - 1) * take;
   const q = (sp.q ?? '').trim();
-  const statusFilter = (sp.status ?? 'all').toUpperCase();
+  const statusFilterRaw = (sp.status ?? 'unscheduled').toLowerCase();
+  const allowedStatuses = new Set(['all', 'unscheduled', 'scheduled', 'cancelled']);
+  const statusFilter = allowedStatuses.has(statusFilterRaw) ? statusFilterRaw : 'unscheduled';
 
   const where: Prisma.AppointmentRequestWhereInput = {};
-  if (statusFilter && statusFilter !== 'ALL' && statusFilter in AppointmentRequestStatus) {
-    where.status = statusFilter as AppointmentRequestStatus;
-  } else {
-    where.status = 'UNSCHEDULED';
+  if (statusFilter !== 'all' && statusFilter.toUpperCase() in AppointmentRequestStatus) {
+    where.status = statusFilter.toUpperCase() as AppointmentRequestStatus;
   }
   if (q) {
     const like = { contains: q, mode: 'insensitive' as const };
@@ -99,8 +112,8 @@ export default async function Page(props: {
           patient: true,
         },
       }),
-    prisma.appointmentRequest.count({ where }),
-    prisma.appointmentRequest.count({ where: { status: 'UNSCHEDULED' } }),
+      prisma.appointmentRequest.count({ where }),
+      prisma.appointmentRequest.count({ where: { status: 'UNSCHEDULED' } }),
       prisma.appointmentRequest.count({ where: { status: 'SCHEDULED' } }),
       prisma.appointmentRequest.count({ where: { status: 'CANCELLED' } }),
       prisma.staffMember.findMany({
@@ -137,6 +150,33 @@ export default async function Page(props: {
     return a.createdAt.getTime() - b.createdAt.getTime();
   });
 
+  const filters = [
+    {
+      key: 'unscheduled',
+      label: 'Unscheduled',
+      count: unscheduledCount,
+      accent: 'from-amber-400 via-amber-500 to-amber-600',
+    },
+    {
+      key: 'scheduled',
+      label: 'Scheduled',
+      count: scheduledCount,
+      accent: 'from-emerald-400 via-emerald-500 to-emerald-600',
+    },
+    {
+      key: 'cancelled',
+      label: 'Cancelled',
+      count: cancelledCount,
+      accent: 'from-slate-400 via-slate-500 to-slate-600',
+    },
+    {
+      key: 'all',
+      label: 'All',
+      count: unscheduledCount + scheduledCount + cancelledCount,
+      accent: 'from-sky-400 via-sky-500 to-sky-600',
+    },
+  ] as const;
+
   return (
     <main className="mx-auto max-w-6xl p-4">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -163,108 +203,174 @@ export default async function Page(props: {
         </div>
       </div>
 
-      <section className="mb-4 flex flex-wrap items-center gap-3 text-sm">
-        <span className="rounded bg-gray-100 px-3 py-1">Unscheduled: {unscheduledCount}</span>
-        <span className="rounded bg-gray-100 px-3 py-1">Scheduled: {scheduledCount}</span>
-        <span className="rounded bg-gray-100 px-3 py-1">Cancelled: {cancelledCount}</span>
+      <section className="mb-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        {filters.map((filter) => {
+          const active = statusFilter === filter.key;
+          const displayCount = active ? total : filter.count;
+          return (
+            <Link
+              key={filter.key}
+              href={{
+                pathname: '/admin/appointments',
+                query: { q, status: filter.key, page: '1' },
+              }}
+              className={cn(
+                'relative overflow-hidden rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm transition hover:border-slate-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
+                active && 'ring-2 ring-offset-2 ring-slate-900 shadow-lg',
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  'pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r opacity-0 transition',
+                  filter.accent,
+                  active && 'opacity-100',
+                )}
+              />
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  {filter.label}
+                </p>
+                <span
+                  className={cn(
+                    'inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold',
+                    active ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700',
+                  )}
+                >
+                  {displayCount}
+                </span>
+              </div>
+              <p
+                className={cn(
+                  'mt-2 text-2xl font-semibold',
+                  active ? 'text-slate-900' : 'text-slate-800',
+                )}
+              >
+                {displayCount}
+              </p>
+              <p className="text-xs text-slate-500">
+                Click to view {filter.label.toLowerCase()} requests
+              </p>
+            </Link>
+          );
+        })}
       </section>
 
-      <form
-        className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end"
-        action="/admin/appointments"
-      >
-        <div className="flex-1">
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide" htmlFor="q">
-            Search
-          </label>
+      <form className="mb-5" action="/admin/appointments">
+        <input type="hidden" name="status" value={statusFilter} />
+        <div className="flex w-full flex-1 items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 shadow-sm backdrop-blur focus-within:border-slate-300 focus-within:ring-2 focus-within:ring-slate-400/40">
           <input
             id="q"
             name="q"
             type="text"
             defaultValue={q}
             placeholder="Patient name, email, phone, or notes"
-            className="w-full rounded border border-gray-300 p-2 text-sm"
+            aria-label="Search appointment requests"
+            className="flex-1 border-none bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
           />
-        </div>
-        <div>
-          <label
-            className="mb-1 block text-xs font-medium uppercase tracking-wide"
-            htmlFor="status"
+          <button
+            type="submit"
+            className="inline-flex items-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
           >
-            Status
-          </label>
-          <select
-            id="status"
-            name="status"
-            defaultValue={statusFilter.toLowerCase()}
-            className="rounded border border-gray-300 p-2 text-sm"
-          >
-            <option value="all">All</option>
-            <option value="unscheduled">Unscheduled</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+            Search
+          </button>
         </div>
-        <button
-          type="submit"
-          className="rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white"
-        >
-          Apply
-        </button>
       </form>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full border text-sm">
-          <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-600">
-            <tr className="text-left">
-              <th className="border px-3 py-2">Created</th>
-              <th className="border px-3 py-2">Patient</th>
-              <th className="border px-3 py-2">Reasons</th>
-              <th className="border px-3 py-2">Priority</th>
-              <th className="border px-3 py-2">Status</th>
-              <th className="border px-3 py-2">Last contact</th>
-              <th className="border px-3 py-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedRows.map((row) => (
-              <tr key={row.id} className="odd:bg-white even:bg-gray-50">
-                <td className="border px-3 py-2">{formatDate(row.createdAt)}</td>
-                <td className="border px-3 py-2">
-                  <div className="font-medium text-gray-900">
-                    {[row.patient?.firstName, row.patient?.lastName].filter(Boolean).join(' ') ||
-                      'Unknown'}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {row.patient?.phone || row.patient?.email || '—'}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Language: {localeLabels[row.preferredLocale] || row.preferredLocale}
-                  </div>
-                </td>
-                <td className="border px-3 py-2">{formatReasons(row.reasons)}</td>
-                <td className="border px-3 py-2">
-                  <div className="font-semibold text-gray-900">{row.effectivePriority}</div>
-                  {row.isEmergency && <div className="text-xs text-red-600">Emergency</div>}
-                </td>
-                <td className="border px-3 py-2">{statusLabel(row.status)}</td>
-                <td className="border px-3 py-2">{formatDate(row.lastContactAt)}</td>
-                <td className="border px-3 py-2">
-                  <Link className="text-blue-600 underline" href={`/admin/appointments/${row.id}`}>
-                    View
-                  </Link>
-                </td>
-              </tr>
-            ))}
-            {!rows.length && (
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="max-h-[70vh] overflow-auto">
+          <table className="min-w-full text-sm">
+            <thead className="sticky top-0 z-10 bg-slate-900 text-[11px] font-semibold uppercase tracking-wider text-white">
               <tr>
-                <td className="border px-3 py-6 text-center text-sm text-gray-500" colSpan={7}>
-                  No appointment requests found.
-                </td>
+                <th className="px-4 py-3 text-left">Created</th>
+                <th className="px-4 py-3 text-left">Patient</th>
+                <th className="px-4 py-3 text-left">Reasons</th>
+                <th className="px-4 py-3 text-left">Priority</th>
+                <th className="px-4 py-3 text-left">Status</th>
+                <th className="px-4 py-3 text-left">Last contact</th>
+                <th className="px-4 py-3 text-left">Actions</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {sortedRows.map((row) => {
+                const reasons = formatReasons(row.reasons);
+                const statusVariant =
+                  row.status === 'SCHEDULED'
+                    ? 'positive'
+                    : row.status === 'CANCELLED'
+                      ? 'neutral'
+                      : 'warning';
+                return (
+                  <tr key={row.id} className="bg-white transition hover:bg-slate-50/80">
+                    <td className="px-4 py-3 align-top text-slate-600">
+                      <div className="font-medium text-slate-800">{formatDate(row.createdAt)}</div>
+                      {row.isEmergency && (
+                        <div className="mt-2">
+                          <span className={badgeClasses('danger')}>Emergency</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 align-top text-slate-800">
+                      <div className="text-base font-semibold">
+                        {[row.patient?.firstName, row.patient?.lastName]
+                          .filter(Boolean)
+                          .join(' ') || 'Unknown'}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {row.patient?.phone || row.patient?.email || '—'}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        Language: {localeLabels[row.preferredLocale] || row.preferredLocale || '—'}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top text-slate-700">
+                      {reasons.length ? (
+                        <div className="flex flex-wrap gap-2">
+                          {reasons.map((reason) => (
+                            <span
+                              key={reason}
+                              className={badgeClasses('neutral', { subtle: true })}
+                            >
+                              {reason}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 align-top text-slate-700">
+                      <span className={badgeClasses(row.isEmergency ? 'danger' : 'neutral')}>
+                        Priority {row.effectivePriority}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 align-top text-slate-700">
+                      <span className={badgeClasses(statusVariant)}>{statusLabel(row.status)}</span>
+                    </td>
+                    <td className="px-4 py-3 align-top text-slate-700">
+                      {formatDate(row.lastContactAt)}
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <Link
+                        className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+                        href={`/admin/appointments/${row.id}`}
+                      >
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+              {!rows.length && (
+                <tr>
+                  <td className="px-4 py-6 text-center text-sm text-slate-500" colSpan={7}>
+                    No appointment requests found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="mt-4 flex items-center justify-between text-sm">
