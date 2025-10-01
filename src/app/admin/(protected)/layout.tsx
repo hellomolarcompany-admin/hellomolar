@@ -1,8 +1,11 @@
 import { cookies } from 'next/headers';
 
 import { verifySession } from '@/lib/auth';
+import { modules } from '@/lib/modules';
 import { resolveTenant } from '@/lib/tenant';
 import HeaderImage from '@/ui/HeaderImage';
+
+import AdminNavigation from './AdminNavigation';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const store = await cookies();
@@ -26,25 +29,34 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   const csrfCookie = store.get('ADMIN_CSRF')?.value || '';
+  const items = [
+    modules.intake && { href: '/admin/intake', label: 'Intake', icon: 'intake' as const },
+    modules.apprequest && {
+      href: '/admin/appointments',
+      label: 'Appointment requests',
+      icon: 'calendar' as const,
+    },
+  ].filter(Boolean) as Array<{ href: string; label: string; icon: 'intake' | 'calendar' }>;
+
   return (
     <>
-      {/* Site header banner */}
-      <header className="border-b bg-white">
-        <div className="mx-auto max-w-6xl p-3">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
+        <div className="mx-auto max-w-6xl px-4 py-4">
           <HeaderImage />
         </div>
-      </header>
-
-      {/* Admin navigation bar */}
-      <header className="border-b bg-gray-50">
-        <div className="mx-auto flex max-w-6xl items-center justify-between p-3 text-sm">
-          <div className="font-medium">Admin</div>
-          <form method="POST" action="/admin/logout">
-            <input type="hidden" name="csrf" defaultValue={csrfCookie} />
-            <button className="rounded border px-3 py-1" type="submit">
-              Logout
-            </button>
-          </form>
+        <div className="border-t border-slate-200 bg-slate-50/60">
+          <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <AdminNavigation items={items} />
+            <form method="POST" action="/admin/logout">
+              <input type="hidden" name="csrf" defaultValue={csrfCookie} />
+              <button
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
+                type="submit"
+              >
+                Logout
+              </button>
+            </form>
+          </div>
         </div>
       </header>
       {children}

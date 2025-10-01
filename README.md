@@ -22,6 +22,7 @@ Quick links:
 - Persists to PostgreSQL via Prisma; raw payload encrypted (AES‑256‑GCM)
 - Code quality: ESLint, Prettier, TypeScript checks, Husky pre-commit
 - Optional multi‑tenant mode with control‑plane DB + AWS KMS‑backed secrets
+- Optional admin appointment-request module with triage scoring, follow-up logging, and intake prefill links
 
 ## Tech Stack
 

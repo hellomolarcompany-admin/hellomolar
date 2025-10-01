@@ -10,6 +10,7 @@ Core Components
 - Prisma ORM with PostgreSQL for the tenant data plane and a control‑plane in multi‑tenant setups.
 - Encryption helpers to persist the full intake payload as an encrypted blob.
 - Optional outbox table for event‑driven integrations.
+- Appointment request module (admin only) with patient timeline events, follow-up tracking, and intake prefill links.
 
 Request Flow (Intake)
 
@@ -40,8 +41,12 @@ Security
 Data Model (high level)
 
 - `IntakeSubmission`: core denormalized fields, JSON maps for medical data, `encBlob`, `encKeyId`, `encAlg`, `isSpam`.
-- `Patient` (core): canonical patient record for linking.
+- `Patient` (core): canonical patient record for linking, including the preferred locale used for outbound communications.
 - `OutboxEvent`: events emitted for decoupled processing by optional modules.
+- `PatientEvent`: append-only timeline entries per patient (appointment requests, contacts, future treatments).
+- `AppointmentRequest`: triaged, prioritised appointment backlog item linked to a `PatientEvent`, now tracking the patient's preferred locale for outreach.
+- `AppointmentRequestFollowUp`: individual contact attempts with urgency adjustments and optional PatientEvent linkage.
+- `StaffMember` / `StaffEventInvolvement`: directory of dentists/hygienists/support staff and their association with timeline events.
 
 Multi‑Tenant Mode
 
@@ -54,6 +59,15 @@ Multi‑Tenant Mode
 Modularity
 
 - `src/lib/modules.ts` reads `MODULES` env var to enable/disable features. For example, `intake` can be disabled to return 404 for intake routes.
+- The `apprequest` module powers the appointment-request admin UI, follow-up logging, and intake-prefill links. When disabled the routes return 404 and the admin tab is hidden.
+
+Appointment Request Module
+
+- All appointment actions live under `src/app/admin/(protected)/appointments/*` and require an authenticated admin session and CSRF token.
+- Creation flow logs a `PatientEvent` (`type=APPOINTMENT_REQUEST`) and an `AppointmentRequest` row; non-emergencies compute a base priority while emergencies score using rule-based triage.
+- Follow-up attempts (`AppointmentRequestFollowUp`) optionally create `PatientEvent` contact entries and apply decline penalties, lowering effective priority each time a proposed slot is refused.
+- A reusable intake-prefill token (`signPrefillToken`) produces a 24-hour link for `/[locale]/intake?prefill=…`, pre-populating contact details for new callers.
+- `StaffMember` records (maintained per tenant) feed preferred-provider pickers and future scheduling integrations; staff involvement can be attached to any `PatientEvent`.
 
 Where to Look
 

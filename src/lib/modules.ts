@@ -14,6 +14,7 @@ function on(name: string): boolean {
 
 export const modules = {
   intake: on('intake'),
+  apprequest: on('apprequest'),
   // Future modules
   scheduling: on('scheduling'),
   emergency: on('emergency'),

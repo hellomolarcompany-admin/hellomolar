@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-
-import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
-
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { useEffect, useMemo, useState } from 'react';
 import type { FieldErrors } from 'react-hook-form';
 import { useForm, useWatch } from 'react-hook-form';
 
@@ -19,9 +17,16 @@ import {
 import Button from '@/ui/Button';
 import Checkbox from '@/ui/Checkbox';
 
+import type { IntakePrefillData } from './IntakeFormClient';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
 
-export default function IntakeForm() {
+export default function IntakeForm({
+  prefill,
+  prefillToken,
+}: {
+  prefill?: IntakePrefillData;
+  prefillToken?: string;
+}) {
   /**
    * Intake form rendered as a client component.
    * Uses react-hook-form with Zod for validation and next-intl for i18n.
@@ -54,6 +59,9 @@ export default function IntakeForm() {
     // do not submit empty strings and trigger validation for tourists.
     shouldUnregister: true,
     defaultValues: {
+      firstName: prefill?.firstName ?? '',
+      lastName: prefill?.lastName ?? '',
+      dateOfBirth: prefill?.dateOfBirth ?? '',
       residentType: 'resident',
       gender: 'other',
       address: {
@@ -64,9 +72,9 @@ export default function IntakeForm() {
         countryOther: '',
         postalCode: '',
       },
-      phone1: { number: '', hasWhatsApp: true },
+      phone1: { number: prefill?.phone ?? '', hasWhatsApp: true },
       // phone2 is optional; omit by default so validation won't require it
-      email: '',
+      email: prefill?.email ?? '',
       emergencyContact: { name: '', relation: 'overig', phone: '' },
       medical: {
         medicationsSelected: [],
@@ -222,7 +230,7 @@ export default function IntakeForm() {
       const res = await fetch('/api/intake', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...values, captchaToken, formTs }),
+        body: JSON.stringify({ ...values, captchaToken, formTs, prefillToken }),
       });
 
       const data = await res.json().catch(() => ({}));
