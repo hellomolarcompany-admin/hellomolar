@@ -63,6 +63,40 @@ enum StaffRole {
   DENTAL_ASSISTANT
 }
 
+enum CurrencyCode {
+  USD
+  EUR
+}
+
+enum InvoiceStatus {
+  DRAFT
+  FINAL
+  PAID
+  VOID
+}
+
+enum InvoicePaymentStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethodCategory {
+  STANDARD
+  CUSTOMER_ACCOUNT
+}
+
+enum InvoiceReminderStatus {
+  PENDING
+  SENT
+  CANCELLED
+}
+
+enum InvoiceReminderType {
+  PAYMENT_DUE
+  OVERDUE
+}
+
 /// Stores a single submitted intake form and associated metadata.
 model IntakeSubmission {
   id        String   @id @default(uuid())
@@ -109,28 +143,28 @@ model IntakeSubmission {
 
 /// Admin users for protected back office access.
 model AdminUser {
-  id             String   @id @default(uuid())
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  username       String   @unique
-  passwordHash   String   // scrypt hash string: scrypt$N$r$p$saltB64$hashB64
+  username     String @unique
+  passwordHash String // scrypt hash string: scrypt$N$r$p$saltB64$hashB64
 
   lastLoginAt    DateTime?
-  failedAttempts Int      @default(0)
+  failedAttempts Int       @default(0)
   lockedUntil    DateTime?
 }
 
 /// Minimal audit trail for admin actions involving sensitive data.
 model AdminAuditLog {
-  id         String   @id @default(uuid())
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
 
-  adminId    String
-  action     String   // e.g., 'intake.decrypt', 'intake.delete'
-  subjectId  String   // e.g., IntakeSubmission.id
-  ipInet     String?
-  userAgent  String?
+  adminId   String
+  action    String // e.g., 'intake.decrypt', 'intake.delete'
+  subjectId String // e.g., IntakeSubmission.id
+  ipInet    String?
+  userAgent String?
 
   @@index([createdAt])
   @@index([adminId, createdAt])
@@ -143,20 +177,25 @@ model Patient {
   updatedAt DateTime @updatedAt
 
   // Minimal identifying fields; extend as needed by modules
-  firstName String
-  lastName  String
-  dob       DateTime?
-  email     String?
-  phone     String?
+  firstName       String
+  lastName        String
+  dob             DateTime?
+  email           String?
+  phone           String?
   preferredLocale LocaleCode?
+  priceList       PriceList?  @relation(fields: [priceListId], references: [id])
+  priceListId     String?
 
-  intakeSubmissions IntakeSubmission[]
-  events            PatientEvent[]
+  intakeSubmissions   IntakeSubmission[]
+  events              PatientEvent[]
   appointmentRequests AppointmentRequest[]
+  invoices            Invoice[]
+  priceOverrides      PatientPriceOverride[]
 
   @@index([lastName, firstName])
   @@index([email])
   @@index([phone])
+  @@index([priceListId])
 }
 
 model PatientEvent {
@@ -164,19 +203,19 @@ model PatientEvent {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  patient   Patient  @relation(fields: [patientId], references: [id])
-  patientId String
-  occurredAt DateTime
-  type      PatientEventType
-  status    PatientEventStatus @default(OPEN)
-  summary   String?
-  payload   Json?
-  createdBy StaffMember? @relation("StaffCreatedEvents", fields: [createdByStaffId], references: [id])
+  patient          Patient            @relation(fields: [patientId], references: [id])
+  patientId        String
+  occurredAt       DateTime
+  type             PatientEventType
+  status           PatientEventStatus @default(OPEN)
+  summary          String?
+  payload          Json?
+  createdBy        StaffMember?       @relation("StaffCreatedEvents", fields: [createdByStaffId], references: [id])
   createdByStaffId String?
 
-  appointmentRequest AppointmentRequest? @relation("AppointmentRequestEvent")
-  followUps         AppointmentRequestFollowUp[] @relation("FollowUpEvent")
-  staffInvolvements StaffEventInvolvement[]
+  appointmentRequest AppointmentRequest?          @relation("AppointmentRequestEvent")
+  followUps          AppointmentRequestFollowUp[] @relation("FollowUpEvent")
+  staffInvolvements  StaffEventInvolvement[]
 
   @@index([patientId, occurredAt])
   @@index([type, occurredAt])
@@ -193,25 +232,25 @@ model AppointmentRequest {
   patient   Patient @relation(fields: [patientId], references: [id])
   patientId String
 
-  status             AppointmentRequestStatus @default(UNSCHEDULED)
-  reasons            AppointmentReason[]
-  plannedDurationMinutes Int @default(30)
-  isEmergency        Boolean @default(false)
-  basePriority       Int     @default(0)
-  triageScore        Int     @default(0)
-  declinePenalty     Int     @default(0)
-  effectivePriority  Int     @default(0)
-  triageInputs       Json?
-  preferredProviderIds String[] @default([])
-  availabilityMatrix Json?
-  notes              String?
-  lastContactAt      DateTime?
-  nextActionAt       DateTime?
-  scheduledStart     DateTime?
-  scheduledEnd       DateTime?
-  preferredLocale    LocaleCode @default(en)
+  status                 AppointmentRequestStatus @default(UNSCHEDULED)
+  reasons                AppointmentReason[]
+  plannedDurationMinutes Int                      @default(30)
+  isEmergency            Boolean                  @default(false)
+  basePriority           Int                      @default(0)
+  triageScore            Int                      @default(0)
+  declinePenalty         Int                      @default(0)
+  effectivePriority      Int                      @default(0)
+  triageInputs           Json?
+  preferredProviderIds   String[]                 @default([])
+  availabilityMatrix     Json?
+  notes                  String?
+  lastContactAt          DateTime?
+  nextActionAt           DateTime?
+  scheduledStart         DateTime?
+  scheduledEnd           DateTime?
+  preferredLocale        LocaleCode               @default(en)
 
-  createdBy       StaffMember? @relation("StaffCreatedAppointments", fields: [createdByStaffId], references: [id])
+  createdBy        StaffMember? @relation("StaffCreatedAppointments", fields: [createdByStaffId], references: [id])
   createdByStaffId String?
 
   followUps AppointmentRequestFollowUp[]
@@ -228,15 +267,15 @@ model AppointmentRequestFollowUp {
 
   request   AppointmentRequest @relation(fields: [requestId], references: [id])
   requestId String
-  event     PatientEvent?       @relation("FollowUpEvent", fields: [eventId], references: [id])
+  event     PatientEvent?      @relation("FollowUpEvent", fields: [eventId], references: [id])
   eventId   String?
 
-  occurredAt DateTime
-  channel    AppointmentContactChannel
-  outcome    AppointmentFollowUpOutcome
-  notes      String?
-  affectsPriority Boolean @default(false)
-  priorityDelta   Int     @default(0)
+  occurredAt      DateTime
+  channel         AppointmentContactChannel
+  outcome         AppointmentFollowUpOutcome
+  notes           String?
+  affectsPriority Boolean                    @default(false)
+  priorityDelta   Int                        @default(0)
 
   staff   StaffMember? @relation("StaffFollowUps", fields: [staffId], references: [id])
   staffId String?
@@ -256,12 +295,13 @@ model StaffMember {
   address     String?
   bankAccount String?
   role        StaffRole
-  active      Boolean @default(true)
+  active      Boolean   @default(true)
 
-  createdEvents   PatientEvent[]            @relation("StaffCreatedEvents")
-  appointmentRequestsCreated AppointmentRequest[] @relation("StaffCreatedAppointments")
-  followUps AppointmentRequestFollowUp[]    @relation("StaffFollowUps")
-  involvements StaffEventInvolvement[]
+  createdEvents              PatientEvent[]               @relation("StaffCreatedEvents")
+  appointmentRequestsCreated AppointmentRequest[]         @relation("StaffCreatedAppointments")
+  followUps                  AppointmentRequestFollowUp[] @relation("StaffFollowUps")
+  involvements               StaffEventInvolvement[]
+  invoiceLines               InvoiceLine[]
 }
 
 model StaffEventInvolvement {
@@ -280,11 +320,245 @@ model StaffEventInvolvement {
   @@index([staffId, createdAt])
 }
 
+model TreatmentCode {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  code        String   @unique
+  description String
+  category    String?
+  priceUsd    Decimal? @db.Decimal(10, 2)
+  priceEur    Decimal? @db.Decimal(10, 2)
+  active      Boolean  @default(true)
+
+  priceListEntries PriceListEntry[]
+  patientOverrides PatientPriceOverride[]
+  invoiceLines     InvoiceLine[]
+
+  @@index([code])
+}
+
+model PriceList {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name        String  @unique
+  description String?
+  isDefault   Boolean @default(false)
+  active      Boolean @default(true)
+
+  entries  PriceListEntry[]
+  patients Patient[]
+  invoices Invoice[]
+
+  @@index([isDefault])
+}
+
+model PriceListEntry {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  priceList       PriceList     @relation(fields: [priceListId], references: [id])
+  priceListId     String
+  treatment       TreatmentCode @relation(fields: [treatmentCodeId], references: [id])
+  treatmentCodeId String
+
+  priceUsd Decimal? @db.Decimal(10, 2)
+  priceEur Decimal? @db.Decimal(10, 2)
+
+  @@unique([priceListId, treatmentCodeId])
+  @@index([treatmentCodeId])
+}
+
+model PatientPriceOverride {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient         Patient       @relation(fields: [patientId], references: [id])
+  patientId       String
+  treatment       TreatmentCode @relation(fields: [treatmentCodeId], references: [id])
+  treatmentCodeId String
+
+  priceUsd Decimal? @db.Decimal(10, 2)
+  priceEur Decimal? @db.Decimal(10, 2)
+  notes    String?
+
+  @@unique([patientId, treatmentCodeId])
+}
+
+model PaymentMethod {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name              String  @unique
+  active            Boolean @default(true)
+  requiresReference Boolean @default(false)
+  category          PaymentMethodCategory @default(STANDARD)
+
+  payments InvoicePayment[]
+}
+
+model Invoice {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  number      String?       @unique
+  status      InvoiceStatus @default(DRAFT)
+  currency    CurrencyCode  @default(USD)
+  issueDate   DateTime      @default(now())
+  dueDate     DateTime?
+  finalizedAt DateTime?
+  paidAt      DateTime?
+  voidedAt    DateTime?
+  notes       String?
+
+  subtotal       Decimal @default(0) @db.Decimal(12, 2)
+  total          Decimal @default(0) @db.Decimal(12, 2)
+  balanceDue     Decimal @default(0) @db.Decimal(12, 2)
+  roundingDelta  Decimal @default(0) @db.Decimal(10, 2)
+  roundingReason String?
+
+  patient         Patient               @relation(fields: [patientId], references: [id])
+  patientId       String
+  priceList       PriceList?            @relation(fields: [priceListId], references: [id])
+  priceListId     String?
+  displayDevice   InvoiceDisplayDevice? @relation("InvoiceDisplayDeviceInvoices", fields: [displayDeviceId], references: [id])
+  displayDeviceId String?
+
+  lines           InvoiceLine[]
+  payments        InvoicePayment[]
+  reminders       InvoiceReminder[]
+  displaySessions InvoiceDisplaySession[]
+
+  @@index([patientId])
+  @@index([status])
+  @@index([issueDate])
+  @@index([dueDate])
+}
+
+model InvoiceLine {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoice         Invoice        @relation(fields: [invoiceId], references: [id])
+  invoiceId       String
+  treatment       TreatmentCode? @relation(fields: [treatmentCodeId], references: [id])
+  treatmentCodeId String?
+  provider        StaffMember    @relation(fields: [providerStaffId], references: [id])
+  providerStaffId String
+
+  lineOrder      Int          @default(0)
+  code           String
+  description    String
+  currency       CurrencyCode @default(USD)
+  unitPrice      Decimal      @default(0) @db.Decimal(10, 2)
+  quantity       Decimal      @default(1) @db.Decimal(10, 2)
+  discountAmount Decimal      @default(0) @db.Decimal(10, 2)
+  lineTotal      Decimal      @default(0) @db.Decimal(12, 2)
+  notes          String?
+
+  @@index([invoiceId])
+  @@index([treatmentCodeId])
+  @@index([providerStaffId])
+}
+
+model InvoicePayment {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoice         Invoice       @relation(fields: [invoiceId], references: [id])
+  invoiceId       String
+  method          PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+  paymentMethodId String
+
+  status    InvoicePaymentStatus @default(COMPLETED)
+  sequence  Int                  @default(0)
+  amount    Decimal              @default(0) @db.Decimal(12, 2)
+  currency  CurrencyCode         @default(USD)
+  paidAt    DateTime             @default(now())
+  dueAt     DateTime?
+  reference String?
+  notes     String?
+
+  @@index([invoiceId])
+  @@index([paymentMethodId])
+  @@index([status])
+}
+
+model InvoiceDisplayDevice {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  label            String
+  deviceKey        String    @unique
+  pairingCode      String?
+  pairingExpiresAt DateTime?
+  pairedAt         DateTime?
+  lastSeenAt       DateTime?
+  active           Boolean   @default(true)
+
+  sessions InvoiceDisplaySession[]
+  invoices Invoice[]               @relation("InvoiceDisplayDeviceInvoices")
+}
+
+model InvoiceDisplaySession {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  device    InvoiceDisplayDevice @relation(fields: [deviceId], references: [id])
+  deviceId  String
+  invoice   Invoice?             @relation(fields: [invoiceId], references: [id])
+  invoiceId String?
+
+  active         Boolean   @default(true)
+  expiresAt      DateTime?
+  lastNotifiedAt DateTime?
+
+  @@index([deviceId, active])
+  @@index([invoiceId])
+}
+
+model InvoiceReminder {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoice   Invoice @relation(fields: [invoiceId], references: [id])
+  invoiceId String
+
+  status       InvoiceReminderStatus @default(PENDING)
+  reminderType InvoiceReminderType   @default(PAYMENT_DUE)
+  scheduledFor DateTime
+  sentAt       DateTime?
+  message      String?
+
+  @@index([invoiceId, status, scheduledFor])
+}
+
+model InvoiceSequence {
+  id        String   @id
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  prefix     String @default("YourSmile-")
+  lastNumber Int    @default(0)
+}
+
 model OutboxEvent {
-  id         String   @id @default(cuid())
-  createdAt  DateTime @default(now())
-  topic      String   // e.g., 'intake.submitted'
-  payload    Json
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+  topic       String // e.g., 'intake.submitted'
+  payload     Json
   processedAt DateTime?
 
   @@index([createdAt])
@@ -297,21 +571,21 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  slug      String   @unique
-  name      String
+  slug String @unique
+  name String
 
-  hosts     TenantHost[]
-  branding  Branding?
-  secrets   TenantSecret?
+  hosts    TenantHost[]
+  branding Branding?
+  secrets  TenantSecret?
 }
 
 model TenantHost {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  host      String   @unique
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  tenantId  String
+  host     String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  tenantId String
 }
 
 model Branding {
@@ -319,8 +593,8 @@ model Branding {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  tenantId  String   @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  tenantId String @unique
 
   logoUrl   String?
   primary   String?
@@ -339,13 +613,13 @@ model TenantSecret {
 }
 
 model SuperAdminUser {
-  id             String   @id @default(cuid())
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  username       String   @unique
+  username       String    @unique
   passwordHash   String
   lastLoginAt    DateTime?
-  failedAttempts Int      @default(0)
+  failedAttempts Int       @default(0)
   lockedUntil    DateTime?
 }

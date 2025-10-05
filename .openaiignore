@@ -1,0 +1,42 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+out/
+.next/
+.vercel/
+coverage/
+.cache/
+.vite/
+
+# Lockfiles and generated data
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+*.sqlite
+*.db
+*.db-wal
+*.db-shm
+
+# Large assets
+public/**/*.png
+public/**/*.jpg
+public/**/*.svg
+public/**/*.pdf
+**/*.min.*
+**/*.map
+
+# Logs and dumps
+logs/
+*.log
+*.trace
+*.har
+dump.sql
+*.sql
+
+# Environment and temp
+.env*
+.supabase/
+supabase/.temp/
+supabase/.branches/
+/odoo-19.0

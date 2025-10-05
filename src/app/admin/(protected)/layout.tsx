@@ -36,7 +36,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       label: 'Appointment requests',
       icon: 'calendar' as const,
     },
-  ].filter(Boolean) as Array<{ href: string; label: string; icon: 'intake' | 'calendar' }>;
+    modules.invoicing && { href: '/admin/invoicing', label: 'Invoicing', icon: 'invoice' as const },
+  ].filter(Boolean) as Array<{
+    href: string;
+    label: string;
+    icon: 'intake' | 'calendar' | 'invoice';
+  }>;
 
   return (
     <>

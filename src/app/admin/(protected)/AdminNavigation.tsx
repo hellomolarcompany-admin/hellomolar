@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import Icon from '@/ui/Icon';
 import { cn } from '@/ui/utils';
 
-type IconName = 'dashboard' | 'intake' | 'calendar';
+type IconName = 'dashboard' | 'intake' | 'calendar' | 'invoice';
 
 type NavItem = {
   href: string;
@@ -33,6 +33,17 @@ function NavIcon({ name }: { name: IconName }) {
           <path d="M11 8h4" />
           <path d="M11 12h4" />
           <path d="M11 16h3" />
+        </Icon>
+      );
+    case 'invoice':
+      return (
+        <Icon aria-hidden>
+          <rect x={5} y={3} width={14} height={18} rx={2} />
+          <path d="M9 8h6" />
+          <path d="M9 12h6" />
+          <path d="M9 16h4" />
+          <path d="M9 5v-2" />
+          <path d="M15 5v-2" />
         </Icon>
       );
     case 'dashboard':
